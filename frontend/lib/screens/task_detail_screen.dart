@@ -460,6 +460,35 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       ),
                     ),
 
+                    if (_task.adaptiveNudgeMessage != null && !_task.isCompleted) ...[
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF818CF8)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.psychology_alt_rounded, color: Color(0xFF818CF8), size: 22),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                _task.adaptiveNudgeMessage!,
+                                style: const TextStyle(
+                                  color: Color(0xFFC7D2FE),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
                     if (_task.isPotentiallyAvoided) ...[
                       const SizedBox(height: 14),
                       Container(

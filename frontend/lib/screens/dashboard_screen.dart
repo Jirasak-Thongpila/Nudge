@@ -136,24 +136,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildRecommendationHero(DashboardData data) {
     final rec = data.recommended;
     if (rec == null) {
+      final hasCompleted = data.summary.completedCount > 0;
       return Card(
         elevation: 1,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        color: hasCompleted ? const Color(0xFFF0FDF4) : Colors.white,
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
           child: Column(
             children: [
-              Icon(Icons.check_circle_outline, size: 48, color: Colors.green.shade400),
-              const SizedBox(height: 12),
-              const Text(
-                'ไม่มีงานค้างในตอนนี้',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: hasCompleted ? const Color(0xFFDCFCE7) : const Color(0xFFEEF2FF),
+                ),
+                child: Icon(
+                  hasCompleted ? Icons.celebration_rounded : Icons.spa_outlined,
+                  size: 36,
+                  color: hasCompleted ? const Color(0xFF16A34A) : const Color(0xFF6366F1),
+                ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 16),
               Text(
-                'คุณจัดการงานสำคัญหมดแล้ว พักผ่อนหรือเพิ่ม Task ใหม่ได้ตลอดเวลา',
+                hasCompleted ? 'ยอดเยี่ยมมาก! วันนี้ไม่มีงานค้างแล้ว 🎉' : 'เริ่มต้นอย่างสบายใจ ไม่มีแรงกดดัน 🌱',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey.shade600),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                hasCompleted
+                    ? 'คุณได้จัดการงานที่สำคัญเรียบร้อย พักผ่อนได้อย่างสบายใจ โดยไม่ต้องกังวล'
+                    : 'Nudge พร้อมช่วยคุณเริ่มจัดการงานทีละนิด เริ่มสร้าง Task แรกของคุณได้เลย',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey.shade600, height: 1.4, fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF6366F1),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: const Icon(Icons.add, size: 18),
+                label: Text(hasCompleted ? 'เพิ่ม Task ใหม่' : 'สร้าง Task แรก'),
+                onPressed: () async {
+                  final created = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AddTaskScreen(apiClient: widget.apiClient),
+                    ),
+                  );
+                  if (created == true) {
+                    _fetchDashboard();
+                  }
+                },
               ),
             ],
           ),
@@ -291,6 +328,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
             const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F3FF),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFDDD6FE)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.lightbulb_outline_rounded, color: Color(0xFF7C3AED), size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      rec.adaptiveNudgeMessage,
+                      style: const TextStyle(
+                        color: Color(0xFF5B21B6),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
             Text(
               rec.recommendationReason,
               style: TextStyle(

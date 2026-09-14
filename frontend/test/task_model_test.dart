@@ -21,6 +21,7 @@ void main() {
         'urgencyScore': 8,
         'priorityScore': 17,
         'isPotentiallyAvoided': true,
+        'adaptiveNudgeMessage': 'งานนี้ถูกเลื่อนหลายครั้ง ลองแบ่งงานเป็นขั้นเล็ก ๆ ไหม?',
       };
 
       final task = Task.fromJson(json);
@@ -32,9 +33,10 @@ void main() {
       expect(task.urgencyScore, 8);
       expect(task.priorityScore, 17);
       expect(task.isPotentiallyAvoided, isTrue);
+      expect(task.adaptiveNudgeMessage, 'งานนี้ถูกเลื่อนหลายครั้ง ลองแบ่งงานเป็นขั้นเล็ก ๆ ไหม?');
     });
 
-    test('Recommendation.fromJson parses recommendation structure', () {
+    test('Recommendation.fromJson parses recommendation structure with adaptive nudge', () {
       final recJson = {
         'task': {
           'id': 102,
@@ -55,6 +57,7 @@ void main() {
         },
         'suggestedAction': 'START_10_MINUTES',
         'recommendationReason': 'งานสำคัญที่ใกล้กำหนดส่ง ลองเริ่มก้าวแรก 10 นาที',
+        'adaptiveNudgeMessage': 'งานนี้ถูกเลื่อนหลายครั้ง ลองแบ่งงานเป็นขั้นเล็ก ๆ ไหม?',
       };
 
       final rec = Recommendation.fromJson(recJson);
@@ -63,6 +66,7 @@ void main() {
       expect(rec.suggestedAction, 'START_10_MINUTES');
       expect(rec.task.priorityScore, 19);
       expect(rec.recommendationReason).toContain('10 นาที');
+      expect(rec.adaptiveNudgeMessage, 'งานนี้ถูกเลื่อนหลายครั้ง ลองแบ่งงานเป็นขั้นเล็ก ๆ ไหม?');
     });
   });
 }

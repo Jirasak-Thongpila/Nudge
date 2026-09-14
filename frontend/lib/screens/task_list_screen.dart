@@ -281,19 +281,27 @@ class _TaskListScreenState extends State<TaskListScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.checklist_rounded,
-                                size: 64, color: Colors.indigo.shade200),
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.indigo.shade50,
+                              ),
+                              child: Icon(Icons.spa_outlined,
+                                  size: 36, color: Colors.indigo.shade400),
+                            ),
                             const SizedBox(height: 16),
                             const Text(
-                              'ยังไม่มี Task ในระบบ',
+                              'ยังไม่มีงานที่ต้องทำในตอนนี้ 🌱',
                               style: TextStyle(
                                   fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'กดปุ่ม + ด้านล่างเพื่อเพิ่ม Task สำคัญที่คุณต้องการเริ่มทำ',
+                              'เริ่มต้นวางแผนอย่างสบายใจ โดยไม่มีความกดดัน\nกดปุ่มด้านล่างเพื่อสร้าง Task แรกของคุณ',
                               textAlign: TextAlign.center,
-                              style: TextStyle(color: Colors.grey.shade600),
+                              style: TextStyle(color: Colors.grey.shade600, height: 1.4, fontSize: 13),
                             ),
                           ],
                         ),

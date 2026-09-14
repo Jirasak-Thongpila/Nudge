@@ -14,6 +14,7 @@ class Task {
   final int urgencyScore;
   final int priorityScore;
   final bool isPotentiallyAvoided;
+  final String? adaptiveNudgeMessage;
 
   Task({
     required this.id,
@@ -31,6 +32,7 @@ class Task {
     required this.urgencyScore,
     required this.priorityScore,
     required this.isPotentiallyAvoided,
+    this.adaptiveNudgeMessage,
   });
 
   bool get isOverdue => daysRemaining < 0;
@@ -58,6 +60,7 @@ class Task {
       urgencyScore: json['urgencyScore'] as int? ?? 0,
       priorityScore: json['priorityScore'] as int? ?? 0,
       isPotentiallyAvoided: json['isPotentiallyAvoided'] as bool? ?? false,
+      adaptiveNudgeMessage: json['adaptiveNudgeMessage'] as String?,
     );
   }
 
@@ -78,6 +81,7 @@ class Task {
       'urgencyScore': urgencyScore,
       'priorityScore': priorityScore,
       'isPotentiallyAvoided': isPotentiallyAvoided,
+      'adaptiveNudgeMessage': adaptiveNudgeMessage,
     };
   }
 }

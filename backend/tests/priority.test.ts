@@ -3,6 +3,7 @@ import {
   calculateUrgencyScore,
   calculateTaskPriority,
   generateRecommendation,
+  getAdaptiveNudgeMessage,
 } from "../src/lib/priority";
 import type { Task } from "../src/db/schema";
 
@@ -99,6 +100,42 @@ describe("Priority Scoring & Recommendation (Ticket 05)", () => {
       expect(recommendation!.task.title).toBe("Difficult Mini Project");
       expect(recommendation!.suggestedAction).toBe("START_10_MINUTES");
       expect(recommendation!.recommendationReason).toContain("10 นาที");
+      expect(recommendation!.adaptiveNudgeMessage).toBe("งานนี้ถูกเลื่อนหลายครั้ง ลองแบ่งงานเป็นขั้นเล็ก ๆ ไหม?");
+    });
+  });
+
+  describe("Adaptive Action Nudge Messaging (Ticket 08 & Spec Section 8)", () => {
+    it("should provide tier 1 nudge for 0 or 1 postponements", () => {
+      expect(getAdaptiveNudgeMessage(0)).toBe("ลองเริ่ม 10 นาทีไหม?");
+      expect(getAdaptiveNudgeMessage(1)).toBe("ลองเริ่ม 10 นาทีไหม?");
+    });
+
+    it("should provide tier 2 nudge for 2 or 3 postponements", () => {
+      expect(getAdaptiveNudgeMessage(2)).toBe("งานนี้ถูกเลื่อนหลายครั้ง ลองแบ่งงานเป็นขั้นเล็ก ๆ ไหม?");
+      expect(getAdaptiveNudgeMessage(3)).toBe("งานนี้ถูกเลื่อนหลายครั้ง ลองแบ่งงานเป็นขั้นเล็ก ๆ ไหม?");
+    });
+
+    it("should provide tier 3 nudge for 4 or more postponements", () => {
+      expect(getAdaptiveNudgeMessage(4)).toBe("งานนี้ถูกเลื่อนซ้ำ ลองลดสิ่งที่ต้องทำตอนนี้ให้เล็กลงไหม?");
+      expect(getAdaptiveNudgeMessage(7)).toBe("งานนี้ถูกเลื่อนซ้ำ ลองลดสิ่งที่ต้องทำตอนนี้ให้เล็กลงไหม?");
+    });
+
+    it("Language Audit: all messages must contain zero shaming or guilt-inducing terms", () => {
+      const bannedWords = ["ขี้เกียจ", "ผลัดวัน", "ล้มเหลว", "ทำโทษ", "สาย", "lazy", "procrastinate", "snooze", "penalty"];
+      const messages = [
+        getAdaptiveNudgeMessage(0),
+        getAdaptiveNudgeMessage(1),
+        getAdaptiveNudgeMessage(2),
+        getAdaptiveNudgeMessage(3),
+        getAdaptiveNudgeMessage(4),
+        getAdaptiveNudgeMessage(10),
+      ];
+
+      for (const msg of messages) {
+        for (const banned of bannedWords) {
+          expect(msg.toLowerCase()).not.toContain(banned);
+        }
+      }
     });
   });
 });

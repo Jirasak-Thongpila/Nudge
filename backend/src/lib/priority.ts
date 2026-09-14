@@ -53,10 +53,26 @@ export function calculateTaskPriority(task: Task, now: Date = new Date()): TaskW
   };
 }
 
+/**
+ * Generates an adaptive action nudge message tailored to postponement count tiers (Spec Section 8).
+ * Adheres strictly to empathetic, non-shaming behavioral support.
+ */
+export function getAdaptiveNudgeMessage(postponeCount: number): string {
+  const count = Math.max(0, Math.round(Number(postponeCount) || 0));
+  if (count >= 4) {
+    return "งานนี้ถูกเลื่อนซ้ำ ลองลดสิ่งที่ต้องทำตอนนี้ให้เล็กลงไหม?";
+  }
+  if (count >= 2) {
+    return "งานนี้ถูกเลื่อนหลายครั้ง ลองแบ่งงานเป็นขั้นเล็ก ๆ ไหม?";
+  }
+  return "ลองเริ่ม 10 นาทีไหม?";
+}
+
 export interface RecommendationResult {
   task: TaskWithPriority;
   suggestedAction: string;
   recommendationReason: string;
+  adaptiveNudgeMessage: string;
 }
 
 export function generateRecommendation(
@@ -95,9 +111,12 @@ export function generateRecommendation(
     recommendationReason = "เหลือเวลาอีก 1 วัน ควรเริ่มลงมือวันนี้";
   }
 
+  const adaptiveNudgeMessage = getAdaptiveNudgeMessage(top.postponeCount);
+
   return {
     task: top,
     suggestedAction: "START_10_MINUTES",
     recommendationReason,
+    adaptiveNudgeMessage,
   };
 }

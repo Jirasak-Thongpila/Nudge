@@ -4,10 +4,10 @@
 
 **Blocked by:** 05: Priority Scoring & Dashboard Recommendation Hero
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Backend recommendation engine formats `adaptiveNudgeMessage` based on postpone count tiers
-- [ ] Language audit verifies zero shaming or guilt-inducing terms across all responses (strict adherence to CONTEXT.md)
-- [ ] Flutter UI renders adaptive nudge copy dynamically within the Recommendation Hero and Task Detail views
-- [ ] Empathetic empty states in Flutter when all tasks are completed or when no tasks exist
-- [ ] Tests verify copy generation across different postpone count thresholds
+- [x] Backend recommendation engine formats `adaptiveNudgeMessage` based on postpone count tiers
+- [x] Language audit verifies zero shaming or guilt-inducing terms across all responses (strict adherence to CONTEXT.md)
+- [x] Flutter UI renders adaptive nudge copy dynamically within the Recommendation Hero and Task Detail views
+- [x] Empathetic empty states in Flutter when all tasks are completed or when no tasks exist
+- [x] Tests verify copy generation across different postpone count thresholds

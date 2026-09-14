@@ -6,6 +6,7 @@ import { calculateAvoidanceScore, detectPotentiallyAvoided } from "../lib/avoida
 import {
   calculateTaskPriority,
   generateRecommendation,
+  getAdaptiveNudgeMessage,
   type TaskWithPriority,
   type RecommendationResult,
 } from "../lib/priority";
@@ -16,6 +17,7 @@ export interface TaskWithDerived extends Task {
   daysRemaining: number;
   avoidanceScore: number;
   isPotentiallyAvoided: boolean;
+  adaptiveNudgeMessage: string;
 }
 
 export interface CreateTaskInput {
@@ -56,12 +58,14 @@ export class TaskService {
       importance: task.importance,
       status: task.status,
     });
+    const adaptiveNudgeMessage = getAdaptiveNudgeMessage(task.postponeCount);
 
     return {
       ...task,
       daysRemaining,
       avoidanceScore,
       isPotentiallyAvoided,
+      adaptiveNudgeMessage,
     };
   }
 

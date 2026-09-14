@@ -79,6 +79,7 @@ class MockTaskService extends TaskService {
       daysRemaining,
       avoidanceScore,
       isPotentiallyAvoided,
+      adaptiveNudgeMessage: "ลองเริ่ม 10 นาทีไหม?",
     };
   }
 }
