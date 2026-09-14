@@ -51,5 +51,54 @@ export const taskRoutes = (options?: TaskRouteOptions) => {
       {
         requireAuth: true,
       }
+    )
+    .patch(
+      "/:id",
+      async ({ currentUser, params: { id }, body, set }) => {
+        try {
+          const taskId = Number(id);
+          if (isNaN(taskId)) {
+            set.status = 400;
+            return {
+              success: false,
+              error: "Invalid task ID",
+            };
+          }
+
+          const updated = await tSvc.updateTaskStatus(
+            currentUser!.id,
+            taskId,
+            body.status
+          );
+
+          return {
+            success: true,
+            data: updated,
+          };
+        } catch (error: any) {
+          if (error?.message === "Task not found") {
+            set.status = 404;
+          } else {
+            set.status = 400;
+          }
+          return {
+            success: false,
+            error: error?.message || "Failed to update task status",
+          };
+        }
+      },
+      {
+        requireAuth: true,
+        params: t.Object({
+          id: t.String(),
+        }),
+        body: t.Object({
+          status: t.Union([
+            t.Literal("NOT_STARTED"),
+            t.Literal("IN_PROGRESS"),
+            t.Literal("COMPLETED"),
+          ]),
+        }),
+      }
     );
 };

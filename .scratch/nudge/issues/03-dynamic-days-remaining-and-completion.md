@@ -4,11 +4,11 @@
 
 **Blocked by:** 02: Task Creation & Task List
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Backend calculation service computes `days_remaining` dynamically from UTC timestamps (ADR-0002)
-- [ ] Backend endpoint `PATCH /tasks/:id` allows status transitions (`NOT_STARTED` -> `IN_PROGRESS` -> `COMPLETED`)
-- [ ] Overdue detection returns negative days remaining without classifying task as avoided
-- [ ] Flutter Task Card renders "เหลืออีก X วัน" (or "เกินกำหนด X วัน") with visual urgency cues
-- [ ] Quick completion action on Flutter Task Card marks task as completed
-- [ ] Unit tests for days remaining calculation covering edge cases (same day, future dates, past dates)
+- [x] Backend calculation service computes `days_remaining` dynamically from UTC timestamps (ADR-0002)
+- [x] Backend endpoint `PATCH /tasks/:id` allows status transitions (`NOT_STARTED` -> `IN_PROGRESS` -> `COMPLETED`)
+- [x] Overdue detection returns negative days remaining without classifying task as avoided
+- [x] Flutter Task Card renders "เหลืออีก X วัน" (or "เกินกำหนด X วัน") with visual urgency cues
+- [x] Quick completion action on Flutter Task Card marks task as completed
+- [x] Unit tests for days remaining calculation covering edge cases (same day, future dates, past dates)

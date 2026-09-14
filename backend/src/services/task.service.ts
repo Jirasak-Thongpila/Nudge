@@ -1,6 +1,13 @@
 import { eq, and, isNull, asc } from "drizzle-orm";
-import { tasks, type Task, type NewTask } from "../db/schema";
+import { tasks, type Task } from "../db/schema";
 import { db as defaultDb, type Database } from "../db";
+import { calculateDaysRemaining } from "../lib/date";
+
+export type TaskStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+
+export interface TaskWithDerived extends Task {
+  daysRemaining: number;
+}
 
 export interface CreateTaskInput {
   title: string;
@@ -12,7 +19,14 @@ export interface CreateTaskInput {
 export class TaskService {
   constructor(private db: Database = defaultDb) {}
 
-  async createTask(userId: number, input: CreateTaskInput): Promise<Task> {
+  protected attachDerivedFields(task: Task, now: Date = new Date()): TaskWithDerived {
+    return {
+      ...task,
+      daysRemaining: calculateDaysRemaining(task.deadline, now),
+    };
+  }
+
+  async createTask(userId: number, input: CreateTaskInput): Promise<TaskWithDerived> {
     const title = input.title?.trim();
     if (!title) {
       throw new Error("Task title is required");
@@ -46,15 +60,47 @@ export class TaskService {
       })
       .returning();
 
-    return created;
+    return this.attachDerivedFields(created);
   }
 
-  async getTasksForUser(userId: number): Promise<Task[]> {
-    return this.db
+  async getTasksForUser(userId: number): Promise<TaskWithDerived[]> {
+    const rows = await this.db
       .select()
       .from(tasks)
       .where(and(eq(tasks.userId, userId), isNull(tasks.deletedAt)))
       .orderBy(asc(tasks.deadline));
+
+    const now = new Date();
+    return rows.map((task) => this.attachDerivedFields(task, now));
+  }
+
+  async updateTaskStatus(
+    userId: number,
+    taskId: number,
+    status: TaskStatus
+  ): Promise<TaskWithDerived> {
+    const allowedStatuses: TaskStatus[] = ["NOT_STARTED", "IN_PROGRESS", "COMPLETED"];
+    if (!allowedStatuses.includes(status)) {
+      throw new Error(`Invalid status: ${status}. Allowed: ${allowedStatuses.join(", ")}`);
+    }
+
+    const [existing] = await this.db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId), isNull(tasks.deletedAt)))
+      .limit(1);
+
+    if (!existing) {
+      throw new Error("Task not found");
+    }
+
+    const [updated] = await this.db
+      .update(tasks)
+      .set({ status })
+      .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)))
+      .returning();
+
+    return this.attachDerivedFields(updated);
   }
 }
 

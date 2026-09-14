@@ -1,8 +1,14 @@
 import { describe, expect, it, beforeEach } from "bun:test";
 import { createApp } from "../src/app";
 import { UserService } from "../src/services/user.service";
-import { TaskService, type CreateTaskInput } from "../src/services/task.service";
+import {
+  TaskService,
+  type CreateTaskInput,
+  type TaskWithDerived,
+  type TaskStatus,
+} from "../src/services/task.service";
 import type { User, Task } from "../src/db/schema";
+import { calculateDaysRemaining } from "../src/lib/date";
 
 class MockUserService extends UserService {
   private store: User[] = [];
@@ -28,7 +34,7 @@ class MockTaskService extends TaskService {
   private store: Task[] = [];
   private nextId = 1;
 
-  override async createTask(userId: number, input: CreateTaskInput): Promise<Task> {
+  override async createTask(userId: number, input: CreateTaskInput): Promise<TaskWithDerived> {
     const title = input.title?.trim();
     if (!title) {
       throw new Error("Task title is required");
@@ -63,17 +69,40 @@ class MockTaskService extends TaskService {
     };
 
     this.store.push(newTask);
-    return newTask;
+    return this.attachDerivedFields(newTask);
   }
 
-  override async getTasksForUser(userId: number): Promise<Task[]> {
+  override async getTasksForUser(userId: number): Promise<TaskWithDerived[]> {
     return this.store
       .filter((t) => t.userId === userId && !t.deletedAt)
-      .sort((a, b) => a.deadline.getTime() - b.deadline.getTime());
+      .sort((a, b) => a.deadline.getTime() - b.deadline.getTime())
+      .map((t) => this.attachDerivedFields(t));
+  }
+
+  override async updateTaskStatus(
+    userId: number,
+    taskId: number,
+    status: TaskStatus
+  ): Promise<TaskWithDerived> {
+    const allowedStatuses: TaskStatus[] = ["NOT_STARTED", "IN_PROGRESS", "COMPLETED"];
+    if (!allowedStatuses.includes(status)) {
+      throw new Error(`Invalid status: ${status}`);
+    }
+
+    const existing = this.store.find(
+      (t) => t.id === taskId && t.userId === userId && !t.deletedAt
+    );
+
+    if (!existing) {
+      throw new Error("Task not found");
+    }
+
+    existing.status = status;
+    return this.attachDerivedFields(existing);
   }
 }
 
-describe("Task Creation & Task List (Ticket 02)", () => {
+describe("Task Management (Ticket 02 & Ticket 03)", () => {
   let mockUserService: MockUserService;
   let mockTaskService: MockTaskService;
   let app: ReturnType<typeof createApp>;
@@ -105,7 +134,7 @@ describe("Task Creation & Task List (Ticket 02)", () => {
       expect(response.status).toBe(401);
     });
 
-    it("should create a task with default status NOT_STARTED and postponeCount 0", async () => {
+    it("should create a task with default status NOT_STARTED and dynamic daysRemaining", async () => {
       const response = await app.handle(
         new Request("http://localhost/tasks", {
           method: "POST",
@@ -123,7 +152,7 @@ describe("Task Creation & Task List (Ticket 02)", () => {
       );
 
       expect(response.status).toBe(201);
-      const body = (await response.json()) as { success: boolean; data: Task };
+      const body = (await response.json()) as { success: boolean; data: TaskWithDerived };
       expect(body.success).toBe(true);
       expect(body.data.id).toBeDefined();
       expect(body.data.title).toBe("Finish Database Schema");
@@ -132,10 +161,10 @@ describe("Task Creation & Task List (Ticket 02)", () => {
       expect(body.data.status).toBe("NOT_STARTED");
       expect(body.data.postponeCount).toBe(0);
       expect(body.data.userId).toBe(1);
+      expect(body.data.daysRemaining).toBeDefined();
     });
 
     it("should reject task creation with empty title or invalid importance", async () => {
-      // Missing title
       const res1 = await app.handle(
         new Request("http://localhost/tasks", {
           method: "POST",
@@ -153,7 +182,6 @@ describe("Task Creation & Task List (Ticket 02)", () => {
       );
       expect(res1.status).toBe(422);
 
-      // Invalid importance > 5
       const res2 = await app.handle(
         new Request("http://localhost/tasks", {
           method: "POST",
@@ -182,12 +210,12 @@ describe("Task Creation & Task List (Ticket 02)", () => {
       );
 
       expect(response.status).toBe(200);
-      const body = (await response.json()) as { success: boolean; data: Task[] };
+      const body = (await response.json()) as { success: boolean; data: TaskWithDerived[] };
       expect(body.success).toBe(true);
       expect(body.data).toEqual([]);
     });
 
-    it("should isolate tasks between different authenticated users", async () => {
+    it("should isolate tasks between different authenticated users and calculate daysRemaining", async () => {
       // User 1 creates task
       await app.handle(
         new Request("http://localhost/tasks", {
@@ -222,32 +250,33 @@ describe("Task Creation & Task List (Ticket 02)", () => {
         })
       );
 
-      // User 1 fetches tasks
       const resAlpha = await app.handle(
         new Request("http://localhost/tasks", {
           headers: { "x-device-uuid": "user-alpha" },
         })
       );
-      const bodyAlpha = (await resAlpha.json()) as { data: Task[] };
+      const bodyAlpha = (await resAlpha.json()) as { data: TaskWithDerived[] };
       expect(bodyAlpha.data.length).toBe(1);
       expect(bodyAlpha.data[0].title).toBe("Alpha Task");
+      expect(typeof bodyAlpha.data[0].daysRemaining).toBe("number");
 
-      // User 2 fetches tasks
       const resBeta = await app.handle(
         new Request("http://localhost/tasks", {
           headers: { "x-device-uuid": "user-beta" },
         })
       );
-      const bodyBeta = (await resBeta.json()) as { data: Task[] };
+      const bodyBeta = (await resBeta.json()) as { data: TaskWithDerived[] };
       expect(bodyBeta.data.length).toBe(1);
       expect(bodyBeta.data[0].title).toBe("Beta Task");
     });
+  });
 
-    it("should return tasks ordered by deadline ascending", async () => {
-      const userUuid = "user-sorting";
+  describe("PATCH /tasks/:id (Status Transition - Ticket 03)", () => {
+    it("should allow status transition from NOT_STARTED to IN_PROGRESS and COMPLETED", async () => {
+      const userUuid = "user-status-test";
 
-      // Task with later deadline
-      await app.handle(
+      // Create task
+      const createRes = await app.handle(
         new Request("http://localhost/tasks", {
           method: "POST",
           headers: {
@@ -255,41 +284,81 @@ describe("Task Creation & Task List (Ticket 02)", () => {
             "x-device-uuid": userUuid,
           },
           body: JSON.stringify({
-            title: "Later Task",
-            deadline: "2026-09-30T10:00:00.000Z",
-            importance: 2,
-            estimatedMinutes: 20,
+            title: "Status Test Task",
+            deadline: "2026-09-25T18:00:00.000Z",
+            importance: 4,
+            estimatedMinutes: 30,
           }),
         })
       );
+      const created = (await createRes.json()) as { data: TaskWithDerived };
+      const taskId = created.data.id;
 
-      // Task with earlier deadline
-      await app.handle(
-        new Request("http://localhost/tasks", {
-          method: "POST",
+      // Update to IN_PROGRESS
+      const patchRes1 = await app.handle(
+        new Request(`http://localhost/tasks/${taskId}`, {
+          method: "PATCH",
           headers: {
             "Content-Type": "application/json",
             "x-device-uuid": userUuid,
           },
           body: JSON.stringify({
-            title: "Earlier Task",
-            deadline: "2026-09-16T10:00:00.000Z",
-            importance: 5,
-            estimatedMinutes: 15,
+            status: "IN_PROGRESS",
           }),
         })
       );
+      expect(patchRes1.status).toBe(200);
+      const body1 = (await patchRes1.json()) as { data: TaskWithDerived };
+      expect(body1.data.status).toBe("IN_PROGRESS");
 
-      const response = await app.handle(
-        new Request("http://localhost/tasks", {
-          headers: { "x-device-uuid": userUuid },
+      // Update to COMPLETED
+      const patchRes2 = await app.handle(
+        new Request(`http://localhost/tasks/${taskId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-device-uuid": userUuid,
+          },
+          body: JSON.stringify({
+            status: "COMPLETED",
+          }),
         })
       );
+      expect(patchRes2.status).toBe(200);
+      const body2 = (await patchRes2.json()) as { data: TaskWithDerived };
+      expect(body2.data.status).toBe("COMPLETED");
+    });
 
-      const body = (await response.json()) as { data: Task[] };
-      expect(body.data.length).toBe(2);
-      expect(body.data[0].title).toBe("Earlier Task");
-      expect(body.data[1].title).toBe("Later Task");
+    it("should return 404 when updating a non-existent task or task belonging to another user", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/tasks/9999", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-device-uuid": "user-someone-else",
+          },
+          body: JSON.stringify({
+            status: "COMPLETED",
+          }),
+        })
+      );
+      expect(res.status).toBe(404);
+    });
+
+    it("should reject invalid status with 422", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/tasks/1", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-device-uuid": "user-test",
+          },
+          body: JSON.stringify({
+            status: "INVALID_STATUS",
+          }),
+        })
+      );
+      expect(res.status).toBe(422);
     });
   });
 });

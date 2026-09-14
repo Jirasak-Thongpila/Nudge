@@ -22,6 +22,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
   List<Task> _tasks = [];
   bool _isLoading = true;
   String? _errorMessage;
+  final Set<int> _updatingTaskIds = {};
 
   @override
   void initState() {
@@ -49,8 +50,82 @@ class _TaskListScreenState extends State<TaskListScreen> {
     }
   }
 
+  Future<void> _toggleTaskStatus(Task task) async {
+    final newStatus = task.isCompleted ? 'NOT_STARTED' : 'COMPLETED';
+
+    setState(() {
+      _updatingTaskIds.add(task.id);
+    });
+
+    try {
+      final updated = await widget.apiClient.updateTaskStatus(task.id, newStatus);
+      setState(() {
+        final index = _tasks.indexWhere((t) => t.id == task.id);
+        if (index != -1) {
+          _tasks[index] = updated;
+        }
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('ไม่สามารถเปลี่ยนสถานะได้: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _updatingTaskIds.remove(task.id);
+        });
+      }
+    }
+  }
+
   String _formatDate(DateTime dt) {
     return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  Widget _buildDaysRemainingBadge(Task task) {
+    String text;
+    Color bgColor;
+    Color textColor;
+
+    if (task.isCompleted) {
+      text = 'เสร็จสิ้น';
+      bgColor = Colors.green.shade50;
+      textColor = Colors.green.shade700;
+    } else if (task.isOverdue) {
+      text = 'เกินกำหนด ${-task.daysRemaining} วัน';
+      bgColor = Colors.red.shade50;
+      textColor = Colors.red.shade700;
+    } else if (task.isDueToday) {
+      text = 'ครบกำหนดวันนี้';
+      bgColor = Colors.amber.shade100;
+      textColor = Colors.amber.shade900;
+    } else {
+      text = 'เหลืออีก ${task.daysRemaining} วัน';
+      bgColor = task.daysRemaining <= 2
+          ? Colors.orange.shade50
+          : Colors.indigo.shade50;
+      textColor = task.daysRemaining <= 2
+          ? Colors.orange.shade800
+          : Colors.indigo.shade700;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
   }
 
   Color _getImportanceColor(int importance) {
@@ -133,6 +208,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
                         separatorBuilder: (_, __) => const SizedBox(height: 12),
                         itemBuilder: (context, index) {
                           final task = _tasks[index];
+                          final isUpdating = _updatingTaskIds.contains(task.id);
                           final importanceColor =
                               _getImportanceColor(task.importance);
 
@@ -140,8 +216,15 @@ class _TaskListScreenState extends State<TaskListScreen> {
                             elevation: 1.5,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(color: Colors.grey.shade200),
+                              side: BorderSide(
+                                color: task.isCompleted
+                                    ? Colors.green.shade200
+                                    : Colors.grey.shade200,
+                              ),
                             ),
+                            color: task.isCompleted
+                                ? Colors.grey.shade50
+                                : Colors.white,
                             child: Padding(
                               padding: const EdgeInsets.all(16.0),
                               child: Column(
@@ -151,35 +234,56 @@ class _TaskListScreenState extends State<TaskListScreen> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
+                                      IconButton(
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                        icon: isUpdating
+                                            ? const SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                ),
+                                              )
+                                            : Icon(
+                                                task.isCompleted
+                                                    ? Icons.check_circle
+                                                    : Icons.radio_button_unchecked,
+                                                color: task.isCompleted
+                                                    ? Colors.green
+                                                    : Colors.grey,
+                                              ),
+                                        onPressed: isUpdating
+                                            ? null
+                                            : () => _toggleTaskStatus(task),
+                                      ),
+                                      const SizedBox(width: 12),
                                       Expanded(
-                                        child: Text(
-                                          task.title,
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              task.title,
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                                decoration: task.isCompleted
+                                                    ? TextDecoration.lineThrough
+                                                    : null,
+                                                color: task.isCompleted
+                                                    ? Colors.grey
+                                                    : Colors.black87,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: importanceColor.withOpacity(0.12),
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          'สำคัญ: ${task.importance}/5',
-                                          style: TextStyle(
-                                            color: importanceColor,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
+                                      const SizedBox(width: 8),
+                                      _buildDaysRemainingBadge(task),
                                     ],
                                   ),
-                                  const SizedBox(height: 10),
+                                  const SizedBox(height: 12),
                                   Row(
                                     children: [
                                       Icon(Icons.calendar_today_outlined,
@@ -190,6 +294,24 @@ class _TaskListScreenState extends State<TaskListScreen> {
                                         style: TextStyle(
                                           fontSize: 13,
                                           color: Colors.grey.shade700,
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: importanceColor.withOpacity(0.12),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          'สำคัญ: ${task.importance}/5',
+                                          style: TextStyle(
+                                            color: importanceColor,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -205,24 +327,6 @@ class _TaskListScreenState extends State<TaskListScreen> {
                                         style: TextStyle(
                                           fontSize: 13,
                                           color: Colors.grey.shade700,
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey.shade100,
-                                          borderRadius:
-                                              BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          task.status,
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: Colors.grey.shade700,
-                                            fontWeight: FontWeight.w600,
-                                          ),
                                         ),
                                       ),
                                     ],

@@ -99,4 +99,25 @@ class ApiClient {
       );
     }
   }
+
+  /// Updates task status (e.g. NOT_STARTED -> IN_PROGRESS -> COMPLETED)
+  Future<Task> updateTaskStatus(int taskId, String newStatus) async {
+    final headers = await _getHeaders();
+    final response = await _httpClient.patch(
+      Uri.parse('$baseUrl/tasks/$taskId'),
+      headers: headers,
+      body: jsonEncode({
+        'status': newStatus,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return Task.fromJson(data['data'] as Map<String, dynamic>);
+    } else {
+      throw Exception(
+        'Failed to update task status: ${response.statusCode} - ${response.body}',
+      );
+    }
+  }
 }
