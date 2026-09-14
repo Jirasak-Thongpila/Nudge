@@ -100,5 +100,42 @@ export const taskRoutes = (options?: TaskRouteOptions) => {
           ]),
         }),
       }
+    )
+    .post(
+      "/:id/postpone",
+      async ({ currentUser, params: { id }, set }) => {
+        try {
+          const taskId = Number(id);
+          if (isNaN(taskId)) {
+            set.status = 400;
+            return {
+              success: false,
+              error: "Invalid task ID",
+            };
+          }
+
+          const updated = await tSvc.postponeTask(currentUser!.id, taskId);
+          return {
+            success: true,
+            data: updated,
+          };
+        } catch (error: any) {
+          if (error?.message === "Task not found") {
+            set.status = 404;
+          } else {
+            set.status = 400;
+          }
+          return {
+            success: false,
+            error: error?.message || "Failed to postpone task",
+          };
+        }
+      },
+      {
+        requireAuth: true,
+        params: t.Object({
+          id: t.String(),
+        }),
+      }
     );
 };

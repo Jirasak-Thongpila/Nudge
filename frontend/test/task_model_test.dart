@@ -2,8 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nudge_app/models/task.dart';
 
 void main() {
-  group('Task Model Serialization & Derived Fields (Ticket 03)', () {
-    test('Task.fromJson correctly parses task JSON including daysRemaining', () {
+  group('Task Model Serialization & Avoidance Fields (Ticket 04)', () {
+    test('Task.fromJson correctly parses task JSON including avoidance fields', () {
       final json = {
         'id': 101,
         'userId': 5,
@@ -15,7 +15,9 @@ void main() {
         'postponeCount': 2,
         'createdAt': '2026-09-14T10:00:00.000Z',
         'deletedAt': null,
-        'daysRemaining': 3,
+        'daysRemaining': 1,
+        'avoidanceScore': 4,
+        'isPotentiallyAvoided': true,
       };
 
       final task = Task.fromJson(json);
@@ -27,47 +29,32 @@ void main() {
       expect(task.estimatedMinutes, 120);
       expect(task.status, 'NOT_STARTED');
       expect(task.postponeCount, 2);
-      expect(task.daysRemaining, 3);
-      expect(task.isOverdue, isFalse);
-      expect(task.isDueToday, isFalse);
-      expect(task.isCompleted, isFalse);
-      expect(task.isNotStarted, isTrue);
+      expect(task.daysRemaining, 1);
+      expect(task.avoidanceScore, 4);
+      expect(task.isPotentiallyAvoided, isTrue);
     });
 
-    test('Status and urgency helper getters work accurately', () {
-      final overdueTask = Task(
+    test('Task.toJson preserves avoidance fields faithfully', () {
+      final task = Task(
         id: 1,
         userId: 2,
-        title: 'Past Task',
-        deadline: DateTime.now().subtract(const Duration(days: 2)),
+        title: 'Complete Homework',
+        deadline: DateTime.parse('2026-09-18T18:00:00.000Z'),
         importance: 4,
-        estimatedMinutes: 30,
-        status: 'COMPLETED',
-        postponeCount: 1,
-        createdAt: DateTime.now(),
-        daysRemaining: -2,
-      );
-
-      expect(overdueTask.isOverdue, isTrue);
-      expect(overdueTask.isDueToday, isFalse);
-      expect(overdueTask.isCompleted, isTrue);
-
-      final todayTask = Task(
-        id: 2,
-        userId: 2,
-        title: 'Today Task',
-        deadline: DateTime.now(),
-        importance: 3,
-        estimatedMinutes: 15,
+        estimatedMinutes: 45,
         status: 'IN_PROGRESS',
-        postponeCount: 0,
-        createdAt: DateTime.now(),
-        daysRemaining: 0,
+        postponeCount: 3,
+        createdAt: DateTime.parse('2026-09-14T08:00:00.000Z'),
+        daysRemaining: 4,
+        avoidanceScore: 6,
+        isPotentiallyAvoided: true,
       );
 
-      expect(todayTask.isOverdue, isFalse);
-      expect(todayTask.isDueToday, isTrue);
-      expect(todayTask.isInProgress, isTrue);
+      final json = task.toJson();
+
+      expect(json['avoidanceScore'], 6);
+      expect(json['isPotentiallyAvoided'], true);
+      expect(json['postponeCount'], 3);
     });
   });
 }

@@ -22,7 +22,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
   List<Task> _tasks = [];
   bool _isLoading = true;
   String? _errorMessage;
-  final Set<int> _updatingTaskIds = {};
+  final Set<int> _actionLoadingTaskIds = {};
 
   @override
   void initState() {
@@ -54,7 +54,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
     final newStatus = task.isCompleted ? 'NOT_STARTED' : 'COMPLETED';
 
     setState(() {
-      _updatingTaskIds.add(task.id);
+      _actionLoadingTaskIds.add(task.id);
     });
 
     try {
@@ -74,7 +74,68 @@ class _TaskListScreenState extends State<TaskListScreen> {
     } finally {
       if (mounted) {
         setState(() {
-          _updatingTaskIds.remove(task.id);
+          _actionLoadingTaskIds.remove(task.id);
+        });
+      }
+    }
+  }
+
+  Future<void> _confirmAndPostponeTask(Task task) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('เลื่อนงานนี้ไปก่อน?'),
+        content: const Text(
+          'คุณกำลังเลือกที่จะเลื่อนงานนี้อย่างตั้งใจ (Explicit Postpone)\n\nระบบจะบันทึกข้อมูลเพื่อช่วยตรวจจับรูปแบบความยากในการเริ่ม และช่วยแนะนำขั้นตอนที่เล็กลงในภายหลัง โดยไม่ตัดสินคุณ',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('ยกเลิก'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.orange.shade800),
+            child: const Text('เลื่อนไปก่อน'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _actionLoadingTaskIds.add(task.id);
+    });
+
+    try {
+      final updated = await widget.apiClient.postponeTask(task.id);
+      setState(() {
+        final index = _tasks.indexWhere((t) => t.id == task.id);
+        if (index != -1) {
+          _tasks[index] = updated;
+        }
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'บันทึกการเลื่อนงาน "${task.title}" แล้ว (เลื่อนไปแล้ว ${updated.postponeCount} ครั้ง)',
+            ),
+            backgroundColor: Colors.indigo.shade800,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('ไม่สามารถเลื่อนงานได้: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _actionLoadingTaskIds.remove(task.id);
         });
       }
     }
@@ -205,10 +266,11 @@ class _TaskListScreenState extends State<TaskListScreen> {
                       child: ListView.separated(
                         padding: const EdgeInsets.all(16),
                         itemCount: _tasks.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        separatorBuilder: (_, __) => const SizedBox(height: 14),
                         itemBuilder: (context, index) {
                           final task = _tasks[index];
-                          final isUpdating = _updatingTaskIds.contains(task.id);
+                          final isActionLoading =
+                              _actionLoadingTaskIds.contains(task.id);
                           final importanceColor =
                               _getImportanceColor(task.importance);
 
@@ -217,14 +279,19 @@ class _TaskListScreenState extends State<TaskListScreen> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                               side: BorderSide(
-                                color: task.isCompleted
-                                    ? Colors.green.shade200
-                                    : Colors.grey.shade200,
+                                color: task.isPotentiallyAvoided && !task.isCompleted
+                                    ? Colors.amber.shade300
+                                    : task.isCompleted
+                                        ? Colors.green.shade200
+                                        : Colors.grey.shade200,
+                                width: task.isPotentiallyAvoided && !task.isCompleted ? 1.5 : 1.0,
                               ),
                             ),
                             color: task.isCompleted
                                 ? Colors.grey.shade50
-                                : Colors.white,
+                                : task.isPotentiallyAvoided
+                                    ? const Color(0xFFFFFDF5)
+                                    : Colors.white,
                             child: Padding(
                               padding: const EdgeInsets.all(16.0),
                               child: Column(
@@ -237,7 +304,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
                                       IconButton(
                                         padding: EdgeInsets.zero,
                                         constraints: const BoxConstraints(),
-                                        icon: isUpdating
+                                        icon: isActionLoading
                                             ? const SizedBox(
                                                 width: 20,
                                                 height: 20,
@@ -253,36 +320,63 @@ class _TaskListScreenState extends State<TaskListScreen> {
                                                     ? Colors.green
                                                     : Colors.grey,
                                               ),
-                                        onPressed: isUpdating
+                                        onPressed: isActionLoading
                                             ? null
                                             : () => _toggleTaskStatus(task),
                                       ),
                                       const SizedBox(width: 12),
                                       Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              task.title,
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                                decoration: task.isCompleted
-                                                    ? TextDecoration.lineThrough
-                                                    : null,
-                                                color: task.isCompleted
-                                                    ? Colors.grey
-                                                    : Colors.black87,
-                                              ),
-                                            ),
-                                          ],
+                                        child: Text(
+                                          task.title,
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            decoration: task.isCompleted
+                                                ? TextDecoration.lineThrough
+                                                : null,
+                                            color: task.isCompleted
+                                                ? Colors.grey
+                                                : Colors.black87,
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(width: 8),
                                       _buildDaysRemainingBadge(task),
                                     ],
                                   ),
+
+                                  // Empathetic Avoidance Badge per CONTEXT.md
+                                  if (task.isPotentiallyAvoided && !task.isCompleted) ...[
+                                    const SizedBox(height: 10),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.amber.shade50,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                            color: Colors.amber.shade300),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.warning_amber_rounded,
+                                              size: 16,
+                                              color: Colors.orange.shade900),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            '⚠️ อาจกำลังถูกเลื่อนซ้ำ',
+                                            style: TextStyle(
+                                              color: Colors.orange.shade900,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+
                                   const SizedBox(height: 12),
                                   Row(
                                     children: [
@@ -323,12 +417,48 @@ class _TaskListScreenState extends State<TaskListScreen> {
                                           size: 14, color: Colors.grey.shade600),
                                       const SizedBox(width: 4),
                                       Text(
-                                        'เวลาโดยประมาณ: ${task.estimatedMinutes} นาที',
+                                        'เวลา: ${task.estimatedMinutes} นาที',
                                         style: TextStyle(
                                           fontSize: 13,
                                           color: Colors.grey.shade700,
                                         ),
                                       ),
+                                      if (task.postponeCount > 0) ...[
+                                        const SizedBox(width: 12),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey.shade100,
+                                            borderRadius:
+                                                BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            'เลื่อนแล้ว ${task.postponeCount} ครั้ง',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.grey.shade800,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                      const Spacer(),
+                                      if (!task.isCompleted)
+                                        OutlinedButton.icon(
+                                          onPressed: isActionLoading
+                                              ? null
+                                              : () => _confirmAndPostponeTask(task),
+                                          style: OutlinedButton.styleFrom(
+                                            visualDensity: VisualDensity.compact,
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10, vertical: 4),
+                                          ),
+                                          icon: const Icon(Icons.schedule, size: 14),
+                                          label: const Text(
+                                            'เลื่อนไปก่อน',
+                                            style: TextStyle(fontSize: 12),
+                                          ),
+                                        ),
                                     ],
                                   ),
                                 ],

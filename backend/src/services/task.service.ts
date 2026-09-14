@@ -1,12 +1,15 @@
-import { eq, and, isNull, asc } from "drizzle-orm";
+import { eq, and, isNull, asc, sql } from "drizzle-orm";
 import { tasks, type Task } from "../db/schema";
 import { db as defaultDb, type Database } from "../db";
 import { calculateDaysRemaining } from "../lib/date";
+import { calculateAvoidanceScore, detectPotentiallyAvoided } from "../lib/avoidance";
 
 export type TaskStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
 
 export interface TaskWithDerived extends Task {
   daysRemaining: number;
+  avoidanceScore: number;
+  isPotentiallyAvoided: boolean;
 }
 
 export interface CreateTaskInput {
@@ -20,9 +23,20 @@ export class TaskService {
   constructor(private db: Database = defaultDb) {}
 
   protected attachDerivedFields(task: Task, now: Date = new Date()): TaskWithDerived {
+    const daysRemaining = calculateDaysRemaining(task.deadline, now);
+    const avoidanceScore = calculateAvoidanceScore(task.postponeCount);
+    const isPotentiallyAvoided = detectPotentiallyAvoided({
+      postponeCount: task.postponeCount,
+      daysRemaining,
+      importance: task.importance,
+      status: task.status,
+    });
+
     return {
       ...task,
-      daysRemaining: calculateDaysRemaining(task.deadline, now),
+      daysRemaining,
+      avoidanceScore,
+      isPotentiallyAvoided,
     };
   }
 
@@ -97,6 +111,28 @@ export class TaskService {
     const [updated] = await this.db
       .update(tasks)
       .set({ status })
+      .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)))
+      .returning();
+
+    return this.attachDerivedFields(updated);
+  }
+
+  async postponeTask(userId: number, taskId: number): Promise<TaskWithDerived> {
+    const [existing] = await this.db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId), isNull(tasks.deletedAt)))
+      .limit(1);
+
+    if (!existing) {
+      throw new Error("Task not found");
+    }
+
+    const [updated] = await this.db
+      .update(tasks)
+      .set({
+        postponeCount: sql`${tasks.postponeCount} + 1`,
+      })
       .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)))
       .returning();
 

@@ -120,4 +120,22 @@ class ApiClient {
       );
     }
   }
+
+  /// Deliberately postpones a task (Explicit Postpone - Ticket 04)
+  Future<Task> postponeTask(int taskId) async {
+    final headers = await _getHeaders();
+    final response = await _httpClient.post(
+      Uri.parse('$baseUrl/tasks/$taskId/postpone'),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return Task.fromJson(data['data'] as Map<String, dynamic>);
+    } else {
+      throw Exception(
+        'Failed to postpone task: ${response.statusCode} - ${response.body}',
+      );
+    }
+  }
 }

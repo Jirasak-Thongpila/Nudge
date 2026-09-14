@@ -100,6 +100,19 @@ class MockTaskService extends TaskService {
     existing.status = status;
     return this.attachDerivedFields(existing);
   }
+
+  override async postponeTask(userId: number, taskId: number): Promise<TaskWithDerived> {
+    const existing = this.store.find(
+      (t) => t.id === taskId && t.userId === userId && !t.deletedAt
+    );
+
+    if (!existing) {
+      throw new Error("Task not found");
+    }
+
+    existing.postponeCount += 1;
+    return this.attachDerivedFields(existing);
+  }
 }
 
 describe("Task Management (Ticket 02 & Ticket 03)", () => {
@@ -359,6 +372,76 @@ describe("Task Management (Ticket 02 & Ticket 03)", () => {
         })
       );
       expect(res.status).toBe(422);
+    });
+  });
+
+  describe("POST /tasks/:id/postpone (Explicit Postpone & Avoidance - Ticket 04)", () => {
+    it("should atomically increment postponeCount and update avoidanceScore", async () => {
+      const userUuid = "user-postpone-test";
+
+      // Create a high-importance task with deadline in 1 day
+      const createRes = await app.handle(
+        new Request("http://localhost/tasks", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-device-uuid": userUuid,
+          },
+          body: JSON.stringify({
+            title: "Mini Project Report",
+            deadline: new Date(Date.now() + 86400000).toISOString(),
+            importance: 5,
+            estimatedMinutes: 60,
+          }),
+        })
+      );
+      const created = (await createRes.json()) as { data: TaskWithDerived };
+      const taskId = created.data.id;
+      expect(created.data.postponeCount).toBe(0);
+      expect(created.data.avoidanceScore).toBe(0);
+      expect(created.data.isPotentiallyAvoided).toBe(false);
+
+      // Explicit Postpone round 1
+      const postRes1 = await app.handle(
+        new Request(`http://localhost/tasks/${taskId}/postpone`, {
+          method: "POST",
+          headers: {
+            "x-device-uuid": userUuid,
+          },
+        })
+      );
+      expect(postRes1.status).toBe(200);
+      const body1 = (await postRes1.json()) as { data: TaskWithDerived };
+      expect(body1.data.postponeCount).toBe(1);
+      expect(body1.data.avoidanceScore).toBe(2);
+      expect(body1.data.isPotentiallyAvoided).toBe(false); // Only 1 postpone, not yet avoided
+
+      // Explicit Postpone round 2 (Near deadline + importance 5 + postponeCount 2)
+      const postRes2 = await app.handle(
+        new Request(`http://localhost/tasks/${taskId}/postpone`, {
+          method: "POST",
+          headers: {
+            "x-device-uuid": userUuid,
+          },
+        })
+      );
+      expect(postRes2.status).toBe(200);
+      const body2 = (await postRes2.json()) as { data: TaskWithDerived };
+      expect(body2.data.postponeCount).toBe(2);
+      expect(body2.data.avoidanceScore).toBe(4);
+      expect(body2.data.isPotentiallyAvoided).toBe(true); // Now flagged as potentially avoided!
+    });
+
+    it("should return 404 when postponing a non-existent task or task belonging to another user", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/tasks/9999/postpone", {
+          method: "POST",
+          headers: {
+            "x-device-uuid": "user-other",
+          },
+        })
+      );
+      expect(res.status).toBe(404);
     });
   });
 });

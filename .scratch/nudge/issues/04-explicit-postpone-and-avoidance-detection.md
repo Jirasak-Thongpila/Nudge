@@ -4,12 +4,12 @@
 
 **Blocked by:** 03: Dynamic Days Remaining & Task Completion
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Backend endpoint `POST /tasks/:id/postpone` atomically increments `postpone_count`
-- [ ] Expiration of deadline does NOT increment `postpone_count` (distinction between explicit postpone and passive expiration)
-- [ ] Avoidance detection evaluates signals (`postpone_count`, `days_remaining`, `importance`, `status`) to set `isPotentiallyAvoided`
-- [ ] `avoidance_score` computed as `min(postpone_count * 2, 10)`
-- [ ] Flutter UI provides explicit "เลื่อนไปก่อน" button with empathetic confirmation
-- [ ] Flutter UI renders "⚠️ งานนี้อาจกำลังถูกเลื่อนซ้ำ" badge when `isPotentiallyAvoided` is true
-- [ ] Tests verify postpone counter increment and avoidance detection rules
+- [x] Backend endpoint `POST /tasks/:id/postpone` atomically increments `postpone_count`
+- [x] Expiration of deadline does NOT increment `postpone_count` (distinction between explicit postpone and passive expiration)
+- [x] Avoidance detection evaluates signals (`postpone_count`, `days_remaining`, `importance`, `status`) to set `isPotentiallyAvoided`
+- [x] `avoidance_score` computed as `min(postpone_count * 2, 10)`
+- [x] Flutter UI provides explicit "เลื่อนไปก่อน" button with empathetic confirmation
+- [x] Flutter UI renders "⚠️ งานนี้อาจกำลังถูกเลื่อนซ้ำ" badge when `isPotentiallyAvoided` is true
+- [x] Tests verify postpone counter increment and avoidance detection rules

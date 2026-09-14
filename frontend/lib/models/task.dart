@@ -10,6 +10,8 @@ class Task {
   final DateTime createdAt;
   final DateTime? deletedAt;
   final int daysRemaining;
+  final int avoidanceScore;
+  final bool isPotentiallyAvoided;
 
   Task({
     required this.id,
@@ -23,6 +25,8 @@ class Task {
     required this.createdAt,
     this.deletedAt,
     required this.daysRemaining,
+    required this.avoidanceScore,
+    required this.isPotentiallyAvoided,
   });
 
   bool get isOverdue => daysRemaining < 0;
@@ -46,6 +50,8 @@ class Task {
           ? DateTime.parse(json['deletedAt'] as String)
           : null,
       daysRemaining: json['daysRemaining'] as int? ?? 0,
+      avoidanceScore: json['avoidanceScore'] as int? ?? 0,
+      isPotentiallyAvoided: json['isPotentiallyAvoided'] as bool? ?? false,
     );
   }
 
@@ -62,6 +68,8 @@ class Task {
       'createdAt': createdAt.toIso8601String(),
       'deletedAt': deletedAt?.toIso8601String(),
       'daysRemaining': daysRemaining,
+      'avoidanceScore': avoidanceScore,
+      'isPotentiallyAvoided': isPotentiallyAvoided,
     };
   }
 }
