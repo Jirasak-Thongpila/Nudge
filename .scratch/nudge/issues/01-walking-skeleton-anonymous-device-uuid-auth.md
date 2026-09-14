@@ -4,12 +4,12 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Backend initializes with Bun, Elysia, and Drizzle ORM connecting to PostgreSQL
-- [ ] Database schema includes `users` table with `id`, `device_uuid`, `line_user_id`, `created_at`
-- [ ] Backend middleware / plugin extracts `x-device-uuid` header and auto-creates or retrieves the user record (ADR-0001)
-- [ ] Health / user endpoint `GET /users/me` returns current user state
-- [ ] Flutter app bootstraps, generates/stores persistent UUID locally with shared_preferences
-- [ ] Flutter app sends `x-device-uuid` to backend and verifies connection on startup
-- [ ] Automated tests verify UUID auth and endpoint functionality
+- [x] Backend initializes with Bun, Elysia, and Drizzle ORM connecting to PostgreSQL
+- [x] Database schema includes `users` table with `id`, `device_uuid`, `line_user_id`, `created_at`
+- [x] Backend middleware / plugin extracts `x-device-uuid` header and auto-creates or retrieves the user record (ADR-0001)
+- [x] Health / user endpoint `GET /users/me` returns current user state
+- [x] Flutter app bootstraps, generates/stores persistent UUID locally with shared_preferences
+- [x] Flutter app sends `x-device-uuid` to backend and verifies connection on startup
+- [x] Automated tests verify UUID auth and endpoint functionality
