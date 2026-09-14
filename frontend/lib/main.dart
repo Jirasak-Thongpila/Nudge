@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'models/user.dart';
 import 'services/api_client.dart';
+import 'services/deep_link_service.dart';
 import 'screens/task_list_screen.dart';
 import 'screens/dashboard_screen.dart';
 
@@ -149,6 +150,16 @@ class _WalkingSkeletonScreenState extends State<WalkingSkeletonScreen> {
                                   'Anonymous UUID (ADR-0001)',
                                   Colors.indigo,
                                 ),
+                                const Divider(height: 20),
+                                _buildInfoRow(
+                                  'LINE OA Link',
+                                  _user?.lineUserId != null
+                                      ? 'เชื่อมต่อแล้ว (${_user!.lineUserId})'
+                                      : 'ยังไม่ได้เชื่อมต่อ',
+                                  _user?.lineUserId != null
+                                      ? const Color(0xFF06C755)
+                                      : Colors.grey,
+                                ),
                               ],
                             ),
                           ),
@@ -209,11 +220,66 @@ class _WalkingSkeletonScreenState extends State<WalkingSkeletonScreen> {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 12),
+                        TextButton.icon(
+                          onPressed: _user == null ? null : _openDeepLinkTester,
+                          icon: const Icon(Icons.link_rounded, color: Color(0xFF6366F1)),
+                          label: const Text(
+                            'ทดสอบ Deep Link (nudge://focus?taskId=...)',
+                            style: TextStyle(color: Color(0xFF6366F1)),
+                          ),
+                        ),
                       ],
                     ),
         ),
       ),
     );
+  }
+
+  Future<void> _openDeepLinkTester() async {
+    final controller = TextEditingController(text: 'nudge://focus?taskId=1');
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('จำลองการเปิด Deep Link จาก LINE'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'เมื่อกดปุ่ม "เริ่ม 10 นาที" จาก LINE Flex Message ระบบจะเรียก URL ดังนี้:',
+              style: TextStyle(fontSize: 13, color: Colors.black54),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Deep Link URL',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('ยกเลิก'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('เปิด Deep Link'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await DeepLinkService.navigateFromDeepLink(
+        context: context,
+        apiClient: _apiClient,
+        uriString: controller.text.trim(),
+      );
+    }
   }
 
   Widget _buildInfoRow(String label, String value, Color valueColor) {

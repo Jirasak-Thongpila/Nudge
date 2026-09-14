@@ -146,7 +146,106 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('ไม่สามารถเปลี่ยนสถานะได้: $e')),
+  Future<void> _sendLineActionNudge() async {
+    setState(() => _isProcessing = true);
+    try {
+      await widget.apiClient.sendLineActionNudge(_task.id);
+      setState(() => _isProcessing = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('💬 ส่ง Action Nudge เข้า LINE สำเร็จแล้ว! (พร้อม Deep Link เปิด Focus Session)'),
+            backgroundColor: Color(0xFF06C755),
+          ),
         );
+      }
+    } catch (e) {
+      setState(() => _isProcessing = false);
+      final errorStr = e.toString();
+      if (errorStr.contains('User has not linked a LINE account')) {
+        _promptLinkLineAccount();
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('เกิดข้อผิดพลาดในการส่ง LINE Nudge: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _promptLinkLineAccount() async {
+    final lineIdController = TextEditingController();
+    final shouldLink = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Row(
+          children: [
+            Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF06C755)),
+            SizedBox(width: 8),
+            Text('เชื่อมต่อ LINE OA', style: TextStyle(color: Colors.white, fontSize: 18)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'คุณยังไม่ได้เชื่อมต่อบัญชี LINE กับอุปกรณ์นี้\nกรุณาระบุ LINE User ID เพื่อรับ Action Nudge พร้อม Deep Link',
+              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: lineIdController,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'LINE User ID (เช่น U12345...)',
+                labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF475569))),
+                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF06C755))),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('ยกเลิก', style: TextStyle(color: Colors.white70)),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF06C755)),
+            child: const Text(
+              'เชื่อมต่อและส่ง Nudge',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLink == true && lineIdController.text.trim().isNotEmpty) {
+      setState(() => _isProcessing = true);
+      try {
+        await widget.apiClient.linkLineAccount(lineIdController.text.trim());
+        await widget.apiClient.sendLineActionNudge(_task.id);
+        setState(() => _isProcessing = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('💬 เชื่อมต่อ LINE และส่ง Action Nudge สำเร็จแล้ว!'),
+              backgroundColor: Color(0xFF06C755),
+            ),
+          );
+        }
+      } catch (e) {
+        setState(() => _isProcessing = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('ไม่สามารถเชื่อมต่อ LINE ได้: $e')),
+          );
+        }
       }
     }
   }
@@ -595,7 +694,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     const SizedBox(height: 12),
 
                     // Focus Session CTA
-                    if (!_task.isCompleted)
+                    if (!_task.isCompleted) ...[
                       SizedBox(
                         width: double.infinity,
                         height: 52,
@@ -613,6 +712,25 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                           onPressed: _startFocusSession,
                         ),
                       ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 46,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF06C755),
+                            side: const BorderSide(color: Color(0xFF06C755)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+                          label: const Text(
+                            'ส่ง Action Nudge เข้า LINE OA',
+                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                          ),
+                          onPressed: _sendLineActionNudge,
+                        ),
+                      ),
+                    ],
 
                     const SizedBox(height: 28),
 

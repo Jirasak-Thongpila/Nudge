@@ -312,4 +312,52 @@ class ApiClient {
       );
     }
   }
+
+  /// Links external LINE account to the current user profile (Ticket 09)
+  Future<User> linkLineAccount(String lineUserId) async {
+    final headers = await _getHeaders();
+    final response = await _httpClient.post(
+      Uri.parse('$baseUrl/line/link'),
+      headers: headers,
+      body: jsonEncode({
+        'lineUserId': lineUserId,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return User.fromJson(data['data'] as Map<String, dynamic>);
+    } else {
+      throw Exception(
+        'Failed to link LINE account: ${response.statusCode} - ${response.body}',
+      );
+    }
+  }
+
+  /// Sends an external Action Nudge via LINE OA (Ticket 09)
+  Future<Map<String, dynamic>> sendLineActionNudge(int taskId) async {
+    final headers = await _getHeaders();
+    final response = await _httpClient.post(
+      Uri.parse('$baseUrl/line/nudge/$taskId'),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return data['data'] as Map<String, dynamic>;
+    } else {
+      try {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        final errorMessage = body['error'] ?? response.body;
+        throw Exception(errorMessage);
+      } catch (e) {
+        if (e is Exception && !e.toString().contains('FormatException')) {
+          rethrow;
+        }
+        throw Exception(
+          'Failed to send LINE action nudge: ${response.statusCode} - ${response.body}',
+        );
+      }
+    }
+  }
 }

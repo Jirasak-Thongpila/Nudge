@@ -44,6 +44,16 @@ export class UserService {
     return rows[0] ?? null;
   }
 
+  async findById(userId: number): Promise<User | null> {
+    const rows = await this.db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    return rows[0] ?? null;
+  }
+
   async linkLineUserId(userId: number, lineUserId: string): Promise<User | null> {
     const [updated] = await this.db
       .update(users)

@@ -10,6 +10,7 @@ node_modules/
 # Build artifacts
 dist/
 build/
+*.tsbuildinfo
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies

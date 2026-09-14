@@ -4,8 +4,9 @@ import { userRoutes } from "./routes/users";
 import { taskRoutes, type TaskRouteOptions } from "./routes/tasks";
 import { dashboardRoutes } from "./routes/dashboard";
 import { focusRoutes, type FocusRouteOptions } from "./routes/focus";
+import { lineRoutes, type LineRouteOptions } from "./routes/line";
 
-export type AppOptions = TaskRouteOptions & FocusRouteOptions;
+export type AppOptions = TaskRouteOptions & FocusRouteOptions & LineRouteOptions;
 
 export const createApp = (options?: AppOptions) =>
   new Elysia()
@@ -24,4 +25,5 @@ export const createApp = (options?: AppOptions) =>
     .use(userRoutes(options))
     .use(taskRoutes(options))
     .use(dashboardRoutes(options))
-    .use(focusRoutes(options));
+    .use(focusRoutes(options))
+    .use(lineRoutes(options));

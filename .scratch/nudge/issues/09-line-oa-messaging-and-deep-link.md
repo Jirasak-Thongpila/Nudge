@@ -4,10 +4,10 @@
 
 **Blocked by:** 06: Client-Driven Focus Session Timer (10 Minutes)
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Database schema links `line_user_id` on `users` table
-- [ ] Backend service integrates with LINE Messaging API to dispatch push messages with flex message template
-- [ ] Backend webhook endpoint `POST /line/webhook` handles LINE events
-- [ ] Mobile app deep-link routing configured to intercept `nudge://focus?taskId=...` and launch directly to Focus Timer
-- [ ] Manual & automated tests for webhook handling and deep link resolution
+- [x] Database schema links `line_user_id` on `users` table
+- [x] Backend service integrates with LINE Messaging API to dispatch push messages with flex message template
+- [x] Backend webhook endpoint `POST /line/webhook` handles LINE events
+- [x] Mobile app deep-link routing configured to intercept `nudge://focus?taskId=...` and launch directly to Focus Timer
+- [x] Manual & automated tests for webhook handling and deep link resolution
