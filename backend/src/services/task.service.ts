@@ -39,7 +39,7 @@ export interface DashboardData {
 export class TaskService {
   constructor(private db: Database = defaultDb) {}
 
-  protected attachDerivedFields(task: Task, now: Date = new Date()): TaskWithDerived {
+  public attachDerivedFields(task: Task, now: Date = new Date()): TaskWithDerived {
     const daysRemaining = calculateDaysRemaining(task.deadline, now);
     const avoidanceScore = calculateAvoidanceScore(task.postponeCount);
     const isPotentiallyAvoided = detectPotentiallyAvoided({

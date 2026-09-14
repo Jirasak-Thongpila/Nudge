@@ -5,6 +5,7 @@ import '../models/user.dart';
 import '../services/api_client.dart';
 import 'add_task_screen.dart';
 import 'task_list_screen.dart';
+import 'focus_timer_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final ApiClient apiClient;
@@ -51,64 +52,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  void _onStartFocusSession(Task task) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Focus Session — ${task.title}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'เริ่มต้นด้วยเวลาสั้นๆ เพียง 10 นาที เพื่อลดแรงต้านในการเริ่มงาน',
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.indigo.shade50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.timer_outlined, color: Colors.indigo),
-                  SizedBox(width: 8),
-                  Text(
-                    '10:00 นาที',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.indigo,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+  Future<void> _onStartFocusSession(Task task) async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => FocusTimerScreen(
+          task: task,
+          apiClient: _apiClient,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('ปิด'),
-          ),
-          FilledButton.icon(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('กำลังเตรียมหน้า Focus Timer (พร้อมใน Ticket 06)'),
-                  backgroundColor: Colors.indigo,
-                ),
-              );
-            },
-            icon: const Icon(Icons.play_arrow),
-            label: const Text('เริ่ม Focus Session'),
-          ),
-        ],
       ),
     );
+    // Reload dashboard after returning from focus session
+    _loadDashboard();
+    if (result == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🎉 บันทึกงานสำเร็จเรียบร้อยแล้ว!'),
+          backgroundColor: Color(0xFF10B981),
+        ),
+      );
+    }
   }
 
   Widget _buildSummaryStats(DashboardData data) {

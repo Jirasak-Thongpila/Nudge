@@ -3,8 +3,11 @@ import { cors } from "@elysiajs/cors";
 import { userRoutes } from "./routes/users";
 import { taskRoutes, type TaskRouteOptions } from "./routes/tasks";
 import { dashboardRoutes } from "./routes/dashboard";
+import { focusRoutes, type FocusRouteOptions } from "./routes/focus";
 
-export const createApp = (options?: TaskRouteOptions) =>
+export type AppOptions = TaskRouteOptions & FocusRouteOptions;
+
+export const createApp = (options?: AppOptions) =>
   new Elysia()
     .use(
       cors({
@@ -20,4 +23,5 @@ export const createApp = (options?: TaskRouteOptions) =>
     }))
     .use(userRoutes(options))
     .use(taskRoutes(options))
-    .use(dashboardRoutes(options));
+    .use(dashboardRoutes(options))
+    .use(focusRoutes(options));

@@ -4,11 +4,11 @@
 
 **Blocked by:** 05: Priority Scoring & Dashboard Recommendation Hero
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Database schema includes `focus_sessions` table (`id`, `task_id`, `started_at`, `duration_minutes`, `completed`)
-- [ ] Backend endpoint `POST /tasks/:id/start` logs/initializes focus session event
-- [ ] Backend endpoint `POST /focus/sessions` records completed or interrupted focus session with duration
-- [ ] Flutter Focus Timer screen runs 10-minute countdown with smooth visual timer ring and pause/cancel controls
-- [ ] Completion modal prompts user: "ทำต่ออีกนิด", "พักเบรกสั้นๆ", or "เสร็จงานนี้แล้ว"
-- [ ] Tests verify timer ticker behavior, session logging, and task status transition if completed
+- [x] Database schema includes `focus_sessions` table (`id`, `task_id`, `started_at`, `duration_minutes`, `completed`)
+- [x] Backend endpoint `POST /tasks/:id/start` logs/initializes focus session event
+- [x] Backend endpoint `POST /focus/sessions` records completed or interrupted focus session with duration
+- [x] Flutter Focus Timer screen runs 10-minute countdown with smooth visual timer ring and pause/cancel controls
+- [x] Completion modal prompts user: "ทำต่ออีกนิด", "พักเบรกสั้นๆ", or "เสร็จงานนี้แล้ว"
+- [x] Tests verify timer ticker behavior, session logging, and task status transition if completed

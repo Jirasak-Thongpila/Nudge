@@ -4,6 +4,7 @@ import '../models/user.dart';
 import '../models/task.dart';
 import '../models/recommendation.dart';
 import '../models/dashboard_data.dart';
+import '../models/focus_session.dart';
 import 'auth_service.dart';
 
 class ApiClient {
@@ -175,6 +176,73 @@ class ApiClient {
     } else {
       throw Exception(
         'Failed to fetch dashboard: ${response.statusCode} - ${response.body}',
+      );
+    }
+  }
+
+  /// Starts a focus session on a task and auto-transitions status to IN_PROGRESS
+  Future<Task> startFocusSession(int taskId) async {
+    final headers = await _getHeaders();
+    final response = await _httpClient.post(
+      Uri.parse('$baseUrl/tasks/$taskId/start'),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final innerData = data['data'] as Map<String, dynamic>;
+      return Task.fromJson(innerData['task'] as Map<String, dynamic>);
+    } else {
+      throw Exception(
+        'Failed to start focus session: ${response.statusCode} - ${response.body}',
+      );
+    }
+  }
+
+  /// Records a completed or interrupted focus session
+  Future<FocusSession> recordFocusSession({
+    required int taskId,
+    required int durationMinutes,
+    required bool completed,
+  }) async {
+    final headers = await _getHeaders();
+    final response = await _httpClient.post(
+      Uri.parse('$baseUrl/focus/sessions'),
+      headers: headers,
+      body: jsonEncode({
+        'taskId': taskId,
+        'durationMinutes': durationMinutes,
+        'completed': completed,
+      }),
+    );
+
+    if (response.statusCode == 201) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return FocusSession.fromJson(data['data'] as Map<String, dynamic>);
+    } else {
+      throw Exception(
+        'Failed to record focus session: ${response.statusCode} - ${response.body}',
+      );
+    }
+  }
+
+  /// Fetches focus sessions history for a task
+  Future<List<FocusSession>> getFocusSessions(int taskId) async {
+    final headers = await _getHeaders();
+    final response = await _httpClient.get(
+      Uri.parse('$baseUrl/focus/sessions?taskId=$taskId'),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final list = data['data'] as List<dynamic>;
+      return list
+          .map((item) => FocusSession.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } else {
+      throw Exception(
+        'Failed to fetch focus sessions: ${response.statusCode} - ${response.body}',
       );
     }
   }

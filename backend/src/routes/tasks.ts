@@ -1,13 +1,16 @@
 import { Elysia, t } from "elysia";
 import { authPlugin, type AuthPluginOptions } from "../plugins/auth";
 import { TaskService, taskService as defaultTaskService } from "../services/task.service";
+import { FocusService, focusService as defaultFocusService } from "../services/focus.service";
 
 export interface TaskRouteOptions extends AuthPluginOptions {
   taskService?: TaskService;
+  focusService?: FocusService;
 }
 
 export const taskRoutes = (options?: TaskRouteOptions) => {
   const tSvc = options?.taskService ?? defaultTaskService;
+  const fSvc = options?.focusService ?? defaultFocusService;
 
   return new Elysia({ prefix: "/tasks" })
     .use(authPlugin(options))
@@ -141,6 +144,43 @@ export const taskRoutes = (options?: TaskRouteOptions) => {
           return {
             success: false,
             error: error?.message || "Failed to postpone task",
+          };
+        }
+      },
+      {
+        requireAuth: true,
+        params: t.Object({
+          id: t.String(),
+        }),
+      }
+    )
+    .post(
+      "/:id/start",
+      async ({ currentUser, params: { id }, set }) => {
+        try {
+          const taskId = Number(id);
+          if (isNaN(taskId)) {
+            set.status = 400;
+            return {
+              success: false,
+              error: "Invalid task ID",
+            };
+          }
+
+          const result = await fSvc.startFocusSession(currentUser!.id, taskId);
+          return {
+            success: true,
+            data: result,
+          };
+        } catch (error: any) {
+          if (error?.message === "Task not found") {
+            set.status = 404;
+          } else {
+            set.status = 400;
+          }
+          return {
+            success: false,
+            error: error?.message || "Failed to start focus session",
           };
         }
       },

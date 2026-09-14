@@ -3,6 +3,7 @@ import '../models/task.dart';
 import '../models/user.dart';
 import '../services/api_client.dart';
 import 'add_task_screen.dart';
+import 'focus_timer_screen.dart';
 
 class TaskListScreen extends StatefulWidget {
   final ApiClient apiClient;
@@ -138,6 +139,27 @@ class _TaskListScreenState extends State<TaskListScreen> {
           _actionLoadingTaskIds.remove(task.id);
         });
       }
+    }
+  }
+
+  Future<void> _startFocusSession(Task task) async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FocusTimerScreen(
+          task: task,
+          apiClient: widget.apiClient,
+        ),
+      ),
+    );
+    _fetchTasks();
+    if (result == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🎉 บันทึกงานสำเร็จเรียบร้อยแล้ว!'),
+          backgroundColor: Color(0xFF10B981),
+        ),
+      );
     }
   }
 
@@ -443,7 +465,20 @@ class _TaskListScreenState extends State<TaskListScreen> {
                                         ),
                                       ],
                                       const Spacer(),
-                                      if (!task.isCompleted)
+                                      if (!task.isCompleted) ...[
+                                        IconButton(
+                                          tooltip: 'เริ่มโฟกัส 10 นาที',
+                                          visualDensity: VisualDensity.compact,
+                                          icon: const Icon(
+                                            Icons.play_circle_fill_rounded,
+                                            color: Color(0xFF6366F1),
+                                            size: 28,
+                                          ),
+                                          onPressed: isActionLoading
+                                              ? null
+                                              : () => _startFocusSession(task),
+                                        ),
+                                        const SizedBox(width: 4),
                                         OutlinedButton.icon(
                                           onPressed: isActionLoading
                                               ? null
