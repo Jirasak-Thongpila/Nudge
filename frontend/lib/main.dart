@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'models/user.dart';
 import 'services/api_client.dart';
+import 'screens/task_list_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -152,10 +153,33 @@ class _WalkingSkeletonScreenState extends State<WalkingSkeletonScreen> {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        FilledButton.tonalIcon(
-                          onPressed: _connectToBackend,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Refresh Status'),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            FilledButton.tonalIcon(
+                              onPressed: _connectToBackend,
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Refresh Status'),
+                            ),
+                            const SizedBox(width: 12),
+                            FilledButton.icon(
+                              onPressed: _user == null
+                                  ? null
+                                  : () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => TaskListScreen(
+                                            apiClient: _apiClient,
+                                            user: _user!,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                              icon: const Icon(Icons.format_list_bulleted),
+                              label: const Text('ดูรายการ Task'),
+                            ),
+                          ],
                         ),
                       ],
                     ),

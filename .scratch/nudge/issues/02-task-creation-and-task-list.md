@@ -4,11 +4,11 @@
 
 **Blocked by:** 01: Walking Skeleton & Anonymous Device UUID Auth
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Database schema includes `tasks` table (`id`, `user_id`, `title`, `deadline`, `importance`, `estimated_minutes`, `status`, `postpone_count`, `created_at`)
-- [ ] Backend endpoint `POST /tasks` validates payload, respects current user from `x-device-uuid`, and creates task with `status: 'NOT_STARTED'` and `postpone_count: 0`
-- [ ] Backend endpoint `GET /tasks` returns tasks belonging exclusively to authenticated user
-- [ ] Flutter Add Task screen with title input, deadline date/time picker, importance selector (1–5), and duration input
-- [ ] Flutter Task List screen displaying user's tasks
-- [ ] Tests verify task creation validation, authorization isolation, and listing
+- [x] Database schema includes `tasks` table (`id`, `user_id`, `title`, `deadline`, `importance`, `estimated_minutes`, `status`, `postpone_count`, `created_at`)
+- [x] Backend endpoint `POST /tasks` validates payload, respects current user from `x-device-uuid`, and creates task with `status: 'NOT_STARTED'` and `postpone_count: 0`
+- [x] Backend endpoint `GET /tasks` returns tasks belonging exclusively to authenticated user
+- [x] Flutter Add Task screen with title input, deadline date/time picker, importance selector (1–5), and duration input
+- [x] Flutter Task List screen displaying user's tasks
+- [x] Tests verify task creation validation, authorization isolation, and listing

@@ -1,9 +1,9 @@
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { userRoutes } from "./routes/users";
-import type { AuthPluginOptions } from "./plugins/auth";
+import { taskRoutes, type TaskRouteOptions } from "./routes/tasks";
 
-export const createApp = (options?: AuthPluginOptions) =>
+export const createApp = (options?: TaskRouteOptions) =>
   new Elysia()
     .use(
       cors({
@@ -17,4 +17,5 @@ export const createApp = (options?: AuthPluginOptions) =>
       timestamp: new Date().toISOString(),
       service: "nudge-backend",
     }))
-    .use(userRoutes(options));
+    .use(userRoutes(options))
+    .use(taskRoutes(options));

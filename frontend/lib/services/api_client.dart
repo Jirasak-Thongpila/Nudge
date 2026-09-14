@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/user.dart';
+import '../models/task.dart';
 import 'auth_service.dart';
 
 class ApiClient {
@@ -47,6 +48,54 @@ class ApiClient {
     } else {
       throw Exception(
         'Failed to fetch user: ${response.statusCode} - ${response.body}',
+      );
+    }
+  }
+
+  /// Fetches active tasks for the authenticated user
+  Future<List<Task>> getTasks() async {
+    final headers = await _getHeaders();
+    final response = await _httpClient.get(
+      Uri.parse('$baseUrl/tasks'),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final list = data['data'] as List<dynamic>;
+      return list.map((item) => Task.fromJson(item as Map<String, dynamic>)).toList();
+    } else {
+      throw Exception(
+        'Failed to fetch tasks: ${response.statusCode} - ${response.body}',
+      );
+    }
+  }
+
+  /// Creates a new task
+  Future<Task> createTask({
+    required String title,
+    required DateTime deadline,
+    required int importance,
+    required int estimatedMinutes,
+  }) async {
+    final headers = await _getHeaders();
+    final response = await _httpClient.post(
+      Uri.parse('$baseUrl/tasks'),
+      headers: headers,
+      body: jsonEncode({
+        'title': title,
+        'deadline': deadline.toIso8601String(),
+        'importance': importance,
+        'estimatedMinutes': estimatedMinutes,
+      }),
+    );
+
+    if (response.statusCode == 201) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return Task.fromJson(data['data'] as Map<String, dynamic>);
+    } else {
+      throw Exception(
+        'Failed to create task: ${response.statusCode} - ${response.body}',
       );
     }
   }
