@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'models/user.dart';
 import 'services/api_client.dart';
 import 'screens/task_list_screen.dart';
+import 'screens/dashboard_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -153,16 +154,43 @@ class _WalkingSkeletonScreenState extends State<WalkingSkeletonScreen> {
                           ),
                         ),
                         const SizedBox(height: 24),
+                        FilledButton.icon(
+                          onPressed: _user == null
+                              ? null
+                              : () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => DashboardScreen(
+                                        apiClient: _apiClient,
+                                        user: _user!,
+                                      ),
+                                    ),
+                                  );
+                                },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF6366F1),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
+                          ),
+                          icon: const Icon(Icons.dashboard_rounded),
+                          label: const Text(
+                            'เข้าสู่ Dashboard',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            FilledButton.tonalIcon(
+                            OutlinedButton.icon(
                               onPressed: _connectToBackend,
                               icon: const Icon(Icons.refresh),
-                              label: const Text('Refresh Status'),
+                              label: const Text('รีเฟรชสถานะ'),
                             ),
                             const SizedBox(width: 12),
-                            FilledButton.icon(
+                            OutlinedButton.icon(
                               onPressed: _user == null
                                   ? null
                                   : () {

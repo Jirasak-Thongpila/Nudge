@@ -4,10 +4,10 @@
 
 **Blocked by:** 04: Explicit Postpone & Avoidance Detection
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Priority calculation algorithm combines `urgency_score`, `importance_score`, and `avoidance_score` (ADR-0002)
-- [ ] Backend endpoint `GET /tasks/recommended` returns the single highest priority task with structured recommendation context (`suggestedAction: "START_10_MINUTES"`)
-- [ ] Backend endpoint `GET /dashboard` groups tasks into Recommended, Next, and Later buckets
-- [ ] Flutter Dashboard screen features the Recommended Task Hero card with days remaining, importance, postpone history, avoidance badge, and `[ เริ่ม 10 นาที ]` action button
-- [ ] Unit & integration tests for ranking algorithm stability and edge cases
+- [x] Priority calculation algorithm combines `urgency_score`, `importance_score`, and `avoidance_score` (ADR-0002)
+- [x] Backend endpoint `GET /tasks/recommended` returns the single highest priority task with structured recommendation context (`suggestedAction: "START_10_MINUTES"`)
+- [x] Backend endpoint `GET /dashboard` groups tasks into Recommended, Next, and Later buckets
+- [x] Flutter Dashboard screen features the Recommended Task Hero card with days remaining, importance, postpone history, avoidance badge, and `[ เริ่ม 10 นาที ]` action button
+- [x] Unit & integration tests for ranking algorithm stability and edge cases

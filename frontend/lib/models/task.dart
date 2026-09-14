@@ -11,6 +11,8 @@ class Task {
   final DateTime? deletedAt;
   final int daysRemaining;
   final int avoidanceScore;
+  final int urgencyScore;
+  final int priorityScore;
   final bool isPotentiallyAvoided;
 
   Task({
@@ -26,6 +28,8 @@ class Task {
     this.deletedAt,
     required this.daysRemaining,
     required this.avoidanceScore,
+    required this.urgencyScore,
+    required this.priorityScore,
     required this.isPotentiallyAvoided,
   });
 
@@ -51,6 +55,8 @@ class Task {
           : null,
       daysRemaining: json['daysRemaining'] as int? ?? 0,
       avoidanceScore: json['avoidanceScore'] as int? ?? 0,
+      urgencyScore: json['urgencyScore'] as int? ?? 0,
+      priorityScore: json['priorityScore'] as int? ?? 0,
       isPotentiallyAvoided: json['isPotentiallyAvoided'] as bool? ?? false,
     );
   }
@@ -69,6 +75,8 @@ class Task {
       'deletedAt': deletedAt?.toIso8601String(),
       'daysRemaining': daysRemaining,
       'avoidanceScore': avoidanceScore,
+      'urgencyScore': urgencyScore,
+      'priorityScore': priorityScore,
       'isPotentiallyAvoided': isPotentiallyAvoided,
     };
   }

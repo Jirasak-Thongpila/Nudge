@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/user.dart';
 import '../models/task.dart';
+import '../models/recommendation.dart';
+import '../models/dashboard_data.dart';
 import 'auth_service.dart';
 
 class ApiClient {
@@ -135,6 +137,44 @@ class ApiClient {
     } else {
       throw Exception(
         'Failed to postpone task: ${response.statusCode} - ${response.body}',
+      );
+    }
+  }
+
+  /// Fetches top recommended task for starting right now
+  Future<Recommendation?> getRecommendedTask() async {
+    final headers = await _getHeaders();
+    final response = await _httpClient.get(
+      Uri.parse('$baseUrl/tasks/recommended'),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final recJson = data['data'] as Map<String, dynamic>?;
+      if (recJson == null) return null;
+      return Recommendation.fromJson(recJson);
+    } else {
+      throw Exception(
+        'Failed to fetch recommendation: ${response.statusCode} - ${response.body}',
+      );
+    }
+  }
+
+  /// Fetches structured dashboard grouped into recommended, next, later, and summary
+  Future<DashboardData> getDashboard() async {
+    final headers = await _getHeaders();
+    final response = await _httpClient.get(
+      Uri.parse('$baseUrl/dashboard'),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return DashboardData.fromJson(data['data'] as Map<String, dynamic>);
+    } else {
+      throw Exception(
+        'Failed to fetch dashboard: ${response.statusCode} - ${response.body}',
       );
     }
   }

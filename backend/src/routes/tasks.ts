@@ -52,6 +52,19 @@ export const taskRoutes = (options?: TaskRouteOptions) => {
         requireAuth: true,
       }
     )
+    .get(
+      "/recommended",
+      async ({ currentUser }) => {
+        const recommendation = await tSvc.getRecommendedTask(currentUser!.id);
+        return {
+          success: true,
+          data: recommendation,
+        };
+      },
+      {
+        requireAuth: true,
+      }
+    )
     .patch(
       "/:id",
       async ({ currentUser, params: { id }, body, set }) => {

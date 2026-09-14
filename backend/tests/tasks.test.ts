@@ -9,6 +9,13 @@ import {
 } from "../src/services/task.service";
 import type { User, Task } from "../src/db/schema";
 import { calculateDaysRemaining } from "../src/lib/date";
+import { detectPotentiallyAvoided } from "../src/lib/avoidance";
+import {
+  generateRecommendation,
+  calculateTaskPriority,
+  type RecommendationResult,
+} from "../src/lib/priority";
+import type { DashboardData } from "../src/services/task.service";
 
 class MockUserService extends UserService {
   private store: User[] = [];
@@ -112,6 +119,52 @@ class MockTaskService extends TaskService {
 
     existing.postponeCount += 1;
     return this.attachDerivedFields(existing);
+  }
+
+  override async getRecommendedTask(userId: number): Promise<RecommendationResult | null> {
+    const userTasks = this.store.filter((t) => t.userId === userId && !t.deletedAt);
+    return generateRecommendation(userTasks);
+  }
+
+  override async getDashboard(userId: number): Promise<DashboardData> {
+    const userTasks = this.store.filter((t) => t.userId === userId && !t.deletedAt);
+    const now = new Date();
+    const recommended = generateRecommendation(userTasks, now);
+    const recommendedTaskId = recommended?.task.id;
+
+    const remainingActive = userTasks
+      .filter((t) => t.status !== "COMPLETED" && t.id !== recommendedTaskId)
+      .map((t) => calculateTaskPriority(t, now));
+
+    remainingActive.sort((a, b) => {
+      if (b.priorityScore !== a.priorityScore) {
+        return b.priorityScore - a.priorityScore;
+      }
+      return a.deadline.getTime() - b.deadline.getTime();
+    });
+
+    const next = remainingActive.slice(0, 3);
+    const later = remainingActive.slice(3);
+
+    return {
+      recommended,
+      next,
+      later,
+      summary: {
+        totalActive: userTasks.filter((t) => t.status !== "COMPLETED").length,
+        completedCount: userTasks.filter((t) => t.status === "COMPLETED").length,
+        potentiallyAvoidedCount: userTasks.filter((t) => {
+          if (t.status === "COMPLETED") return false;
+          const days = calculateDaysRemaining(t.deadline, now);
+          return detectPotentiallyAvoided({
+            postponeCount: t.postponeCount,
+            daysRemaining: days,
+            importance: t.importance,
+            status: t.status,
+          });
+        }).length,
+      },
+    };
   }
 }
 
@@ -442,6 +495,113 @@ describe("Task Management (Ticket 02 & Ticket 03)", () => {
         })
       );
       expect(res.status).toBe(404);
+    });
+  });
+
+  describe("GET /tasks/recommended & GET /dashboard (Ticket 05)", () => {
+    it("should return null for recommended task when user has no active tasks", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/tasks/recommended", {
+          headers: { "x-device-uuid": "empty-user" },
+        })
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { data: RecommendationResult | null };
+      expect(body.data).toBeNull();
+    });
+
+    it("should return the top recommended task with suggestedAction START_10_MINUTES", async () => {
+      const userUuid = "recommend-user";
+
+      // Task 1: Low urgency, importance 3
+      await app.handle(
+        new Request("http://localhost/tasks", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-device-uuid": userUuid,
+          },
+          body: JSON.stringify({
+            title: "Low Urgency Task",
+            deadline: new Date(Date.now() + 86400000 * 10).toISOString(),
+            importance: 3,
+            estimatedMinutes: 30,
+          }),
+        })
+      );
+
+      // Task 2: High urgency, importance 5 (Top priority)
+      const res2 = await app.handle(
+        new Request("http://localhost/tasks", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-device-uuid": userUuid,
+          },
+          body: JSON.stringify({
+            title: "Urgent Mini Project",
+            deadline: new Date(Date.now() + 86400000).toISOString(),
+            importance: 5,
+            estimatedMinutes: 120,
+          }),
+        })
+      );
+      const task2 = (await res2.json()) as { data: TaskWithDerived };
+
+      // Explicit postpone task 2 to increase avoidance score
+      await app.handle(
+        new Request(`http://localhost/tasks/${task2.data.id}/postpone`, {
+          method: "POST",
+          headers: { "x-device-uuid": userUuid },
+        })
+      );
+
+      const recRes = await app.handle(
+        new Request("http://localhost/tasks/recommended", {
+          headers: { "x-device-uuid": userUuid },
+        })
+      );
+      expect(recRes.status).toBe(200);
+      const recBody = (await recRes.json()) as { data: RecommendationResult };
+      expect(recBody.data.task.title).toBe("Urgent Mini Project");
+      expect(recBody.data.suggestedAction).toBe("START_10_MINUTES");
+      expect(recBody.data.task.priorityScore).toBeGreaterThanOrEqual(15);
+    });
+
+    it("GET /dashboard should group tasks into recommended, next, later and summary", async () => {
+      const userUuid = "dashboard-user";
+
+      // Create 5 tasks
+      for (let i = 1; i <= 5; i++) {
+        await app.handle(
+          new Request("http://localhost/tasks", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-device-uuid": userUuid,
+            },
+            body: JSON.stringify({
+              title: `Task #${i}`,
+              deadline: new Date(Date.now() + 86400000 * i).toISOString(),
+              importance: i,
+              estimatedMinutes: i * 20,
+            }),
+          })
+        );
+      }
+
+      const dashRes = await app.handle(
+        new Request("http://localhost/dashboard", {
+          headers: { "x-device-uuid": userUuid },
+        })
+      );
+      expect(dashRes.status).toBe(200);
+      const dashBody = (await dashRes.json()) as { data: DashboardData };
+
+      expect(dashBody.data.recommended).not.toBeNull();
+      expect(dashBody.data.summary.totalActive).toBe(5);
+      expect(dashBody.data.summary.completedCount).toBe(0);
+      expect(dashBody.data.next.length).toBeLessThanOrEqual(3);
     });
   });
 });

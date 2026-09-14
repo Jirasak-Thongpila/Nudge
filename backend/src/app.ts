@@ -2,6 +2,7 @@ import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { userRoutes } from "./routes/users";
 import { taskRoutes, type TaskRouteOptions } from "./routes/tasks";
+import { dashboardRoutes } from "./routes/dashboard";
 
 export const createApp = (options?: TaskRouteOptions) =>
   new Elysia()
@@ -18,4 +19,5 @@ export const createApp = (options?: TaskRouteOptions) =>
       service: "nudge-backend",
     }))
     .use(userRoutes(options))
-    .use(taskRoutes(options));
+    .use(taskRoutes(options))
+    .use(dashboardRoutes(options));

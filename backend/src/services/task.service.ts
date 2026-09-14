@@ -3,6 +3,12 @@ import { tasks, type Task } from "../db/schema";
 import { db as defaultDb, type Database } from "../db";
 import { calculateDaysRemaining } from "../lib/date";
 import { calculateAvoidanceScore, detectPotentiallyAvoided } from "../lib/avoidance";
+import {
+  calculateTaskPriority,
+  generateRecommendation,
+  type TaskWithPriority,
+  type RecommendationResult,
+} from "../lib/priority";
 
 export type TaskStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
 
@@ -17,6 +23,17 @@ export interface CreateTaskInput {
   deadline: Date | string;
   importance: number;
   estimatedMinutes: number;
+}
+
+export interface DashboardData {
+  recommended: RecommendationResult | null;
+  next: TaskWithPriority[];
+  later: TaskWithPriority[];
+  summary: {
+    totalActive: number;
+    completedCount: number;
+    potentiallyAvoidedCount: number;
+  };
 }
 
 export class TaskService {
@@ -137,6 +154,66 @@ export class TaskService {
       .returning();
 
     return this.attachDerivedFields(updated);
+  }
+
+  async getRecommendedTask(userId: number): Promise<RecommendationResult | null> {
+    const rows = await this.db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.userId, userId), isNull(tasks.deletedAt)));
+
+    return generateRecommendation(rows);
+  }
+
+  async getDashboard(userId: number): Promise<DashboardData> {
+    const rows = await this.db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.userId, userId), isNull(tasks.deletedAt)));
+
+    const now = new Date();
+    const recommended = generateRecommendation(rows, now);
+    const recommendedTaskId = recommended?.task.id;
+
+    // Filter active tasks that aren't the top recommended task
+    const remainingActive = rows
+      .filter((t) => t.status !== "COMPLETED" && t.id !== recommendedTaskId)
+      .map((t) => calculateTaskPriority(t, now));
+
+    // Sort active tasks by priorityScore DESC, then deadline ASC
+    remainingActive.sort((a, b) => {
+      if (b.priorityScore !== a.priorityScore) {
+        return b.priorityScore - a.priorityScore;
+      }
+      return a.deadline.getTime() - b.deadline.getTime();
+    });
+
+    const next = remainingActive.slice(0, 3);
+    const later = remainingActive.slice(3);
+
+    const totalActive = rows.filter((t) => t.status !== "COMPLETED").length;
+    const completedCount = rows.filter((t) => t.status === "COMPLETED").length;
+    const potentiallyAvoidedCount = rows.filter((t) => {
+      if (t.status === "COMPLETED") return false;
+      const days = calculateDaysRemaining(t.deadline, now);
+      return detectPotentiallyAvoided({
+        postponeCount: t.postponeCount,
+        daysRemaining: days,
+        importance: t.importance,
+        status: t.status,
+      });
+    }).length;
+
+    return {
+      recommended,
+      next,
+      later,
+      summary: {
+        totalActive,
+        completedCount,
+        potentiallyAvoidedCount,
+      },
+    };
   }
 }
 
