@@ -246,4 +246,70 @@ class ApiClient {
       );
     }
   }
+
+  /// Fetches single task details by ID
+  Future<Task> getTask(int taskId) async {
+    final headers = await _getHeaders();
+    final response = await _httpClient.get(
+      Uri.parse('$baseUrl/tasks/$taskId'),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return Task.fromJson(data['data'] as Map<String, dynamic>);
+    } else {
+      throw Exception(
+        'Failed to fetch task: ${response.statusCode} - ${response.body}',
+      );
+    }
+  }
+
+  /// Updates task fields (title, deadline, importance, estimatedMinutes, status)
+  Future<Task> updateTask(
+    int taskId, {
+    String? title,
+    DateTime? deadline,
+    int? importance,
+    int? estimatedMinutes,
+    String? status,
+  }) async {
+    final headers = await _getHeaders();
+    final body = <String, dynamic>{};
+    if (title != null) body['title'] = title;
+    if (deadline != null) body['deadline'] = deadline.toIso8601String();
+    if (importance != null) body['importance'] = importance;
+    if (estimatedMinutes != null) body['estimatedMinutes'] = estimatedMinutes;
+    if (status != null) body['status'] = status;
+
+    final response = await _httpClient.patch(
+      Uri.parse('$baseUrl/tasks/$taskId'),
+      headers: headers,
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return Task.fromJson(data['data'] as Map<String, dynamic>);
+    } else {
+      throw Exception(
+        'Failed to update task: ${response.statusCode} - ${response.body}',
+      );
+    }
+  }
+
+  /// Soft deletes a task (ADR-0004)
+  Future<void> deleteTask(int taskId) async {
+    final headers = await _getHeaders();
+    final response = await _httpClient.delete(
+      Uri.parse('$baseUrl/tasks/$taskId'),
+      headers: headers,
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to delete task: ${response.statusCode} - ${response.body}',
+      );
+    }
+  }
 }

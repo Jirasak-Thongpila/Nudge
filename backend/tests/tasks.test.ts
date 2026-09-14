@@ -4,6 +4,7 @@ import { UserService } from "../src/services/user.service";
 import {
   TaskService,
   type CreateTaskInput,
+  type UpdateTaskInput,
   type TaskWithDerived,
   type TaskStatus,
 } from "../src/services/task.service";
@@ -86,26 +87,83 @@ class MockTaskService extends TaskService {
       .map((t) => this.attachDerivedFields(t));
   }
 
+  override async getTaskById(userId: number, taskId: number): Promise<TaskWithDerived> {
+    const existing = this.store.find(
+      (t) => t.id === taskId && t.userId === userId && !t.deletedAt
+    );
+    if (!existing) {
+      throw new Error("Task not found");
+    }
+    return this.attachDerivedFields(existing);
+  }
+
+  override async updateTask(
+    userId: number,
+    taskId: number,
+    input: UpdateTaskInput
+  ): Promise<TaskWithDerived> {
+    const existing = this.store.find(
+      (t) => t.id === taskId && t.userId === userId && !t.deletedAt
+    );
+    if (!existing) {
+      throw new Error("Task not found");
+    }
+
+    if (input.title !== undefined) {
+      const title = input.title.trim();
+      if (!title) throw new Error("Task title cannot be empty");
+      existing.title = title;
+    }
+    if (input.deadline !== undefined) {
+      const deadline = new Date(input.deadline);
+      if (isNaN(deadline.getTime())) throw new Error("Invalid deadline format");
+      existing.deadline = deadline;
+    }
+    if (input.importance !== undefined) {
+      const importance = Math.round(Number(input.importance));
+      if (isNaN(importance) || importance < 1 || importance > 5) {
+        throw new Error("Importance must be an integer between 1 and 5");
+      }
+      existing.importance = importance;
+    }
+    if (input.estimatedMinutes !== undefined) {
+      const estimatedMinutes = Math.round(Number(input.estimatedMinutes));
+      if (isNaN(estimatedMinutes) || estimatedMinutes <= 0) {
+        throw new Error("Estimated duration must be greater than 0 minutes");
+      }
+      existing.estimatedMinutes = estimatedMinutes;
+    }
+    if (input.status !== undefined) {
+      const allowedStatuses: TaskStatus[] = ["NOT_STARTED", "IN_PROGRESS", "COMPLETED"];
+      if (!allowedStatuses.includes(input.status)) {
+        throw new Error(`Invalid status: ${input.status}`);
+      }
+      existing.status = input.status;
+    }
+
+    return this.attachDerivedFields(existing);
+  }
+
   override async updateTaskStatus(
     userId: number,
     taskId: number,
     status: TaskStatus
   ): Promise<TaskWithDerived> {
-    const allowedStatuses: TaskStatus[] = ["NOT_STARTED", "IN_PROGRESS", "COMPLETED"];
-    if (!allowedStatuses.includes(status)) {
-      throw new Error(`Invalid status: ${status}`);
-    }
+    return this.updateTask(userId, taskId, { status });
+  }
 
+  override async softDeleteTask(userId: number, taskId: number): Promise<void> {
     const existing = this.store.find(
       (t) => t.id === taskId && t.userId === userId && !t.deletedAt
     );
-
     if (!existing) {
       throw new Error("Task not found");
     }
+    existing.deletedAt = new Date();
+  }
 
-    existing.status = status;
-    return this.attachDerivedFields(existing);
+  public getRawStore(): Task[] {
+    return this.store;
   }
 
   override async postponeTask(userId: number, taskId: number): Promise<TaskWithDerived> {
@@ -602,6 +660,156 @@ describe("Task Management (Ticket 02 & Ticket 03)", () => {
       expect(dashBody.data.summary.totalActive).toBe(5);
       expect(dashBody.data.summary.completedCount).toBe(0);
       expect(dashBody.data.next.length).toBeLessThanOrEqual(3);
+    });
+  });
+
+  describe("Task Detail, Editing & Soft Delete (Ticket 07 & ADR-0004)", () => {
+    it("GET /tasks/:id should return single task details with derived fields", async () => {
+      const userUuid = "detail-user";
+      const createRes = await app.handle(
+        new Request("http://localhost/tasks", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-device-uuid": userUuid,
+          },
+          body: JSON.stringify({
+            title: "Task to inspect",
+            deadline: new Date(Date.now() + 86400000 * 2).toISOString(),
+            importance: 4,
+            estimatedMinutes: 45,
+          }),
+        })
+      );
+      const created = (await createRes.json()) as any;
+      const taskId = created.data.id;
+
+      const getRes = await app.handle(
+        new Request(`http://localhost/tasks/${taskId}`, {
+          headers: { "x-device-uuid": userUuid },
+        })
+      );
+
+      expect(getRes.status).toBe(200);
+      const getBody = (await getRes.json()) as any;
+      expect(getBody.success).toBe(true);
+      expect(getBody.data.id).toBe(taskId);
+      expect(getBody.data.title).toBe("Task to inspect");
+      expect(getBody.data.daysRemaining).toBeDefined();
+      expect(getBody.data.avoidanceScore).toBeDefined();
+    });
+
+    it("GET /tasks/:id should return 404 for non-existent task or task of another user", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/tasks/99999", {
+          headers: { "x-device-uuid": "detail-user" },
+        })
+      );
+      expect(res.status).toBe(404);
+      const body = (await res.json()) as any;
+      expect(body.success).toBe(false);
+      expect(body.error).toBe("Task not found");
+    });
+
+    it("PATCH /tasks/:id should update title, importance, estimatedMinutes, deadline", async () => {
+      const userUuid = "edit-user";
+      const createRes = await app.handle(
+        new Request("http://localhost/tasks", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-device-uuid": userUuid,
+          },
+          body: JSON.stringify({
+            title: "Original Title",
+            deadline: new Date(Date.now() + 86400000).toISOString(),
+            importance: 2,
+            estimatedMinutes: 15,
+          }),
+        })
+      );
+      const created = (await createRes.json()) as any;
+      const taskId = created.data.id;
+
+      const newDeadline = new Date(Date.now() + 86400000 * 5).toISOString();
+      const patchRes = await app.handle(
+        new Request(`http://localhost/tasks/${taskId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-device-uuid": userUuid,
+          },
+          body: JSON.stringify({
+            title: "Updated Title",
+            importance: 5,
+            estimatedMinutes: 90,
+            deadline: newDeadline,
+          }),
+        })
+      );
+
+      expect(patchRes.status).toBe(200);
+      const patchBody = (await patchRes.json()) as any;
+      expect(patchBody.success).toBe(true);
+      expect(patchBody.data.title).toBe("Updated Title");
+      expect(patchBody.data.importance).toBe(5);
+      expect(patchBody.data.estimatedMinutes).toBe(90);
+    });
+
+    it("DELETE /tasks/:id should execute Soft Delete (ADR-0004), preserving DB record", async () => {
+      const userUuid = "delete-user";
+      const createRes = await app.handle(
+        new Request("http://localhost/tasks", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-device-uuid": userUuid,
+          },
+          body: JSON.stringify({
+            title: "Task to delete",
+            deadline: new Date(Date.now() + 86400000).toISOString(),
+            importance: 3,
+            estimatedMinutes: 30,
+          }),
+        })
+      );
+      const created = (await createRes.json()) as any;
+      const taskId = created.data.id;
+
+      // Soft delete
+      const delRes = await app.handle(
+        new Request(`http://localhost/tasks/${taskId}`, {
+          method: "DELETE",
+          headers: { "x-device-uuid": userUuid },
+        })
+      );
+
+      expect(delRes.status).toBe(200);
+      const delBody = (await delRes.json()) as any;
+      expect(delBody.success).toBe(true);
+
+      // Verify row is NOT deleted from underlying DB store, but marked with deletedAt
+      const rawTasks = mockTaskService.getRawStore();
+      const rawTask = rawTasks.find((t) => t.id === taskId);
+      expect(rawTask).toBeDefined();
+      expect(rawTask!.deletedAt).not.toBeNull();
+
+      // Verify GET /tasks/:id now returns 404
+      const getSingleRes = await app.handle(
+        new Request(`http://localhost/tasks/${taskId}`, {
+          headers: { "x-device-uuid": userUuid },
+        })
+      );
+      expect(getSingleRes.status).toBe(404);
+
+      // Verify GET /tasks excludes the soft deleted task
+      const getListRes = await app.handle(
+        new Request("http://localhost/tasks", {
+          headers: { "x-device-uuid": userUuid },
+        })
+      );
+      const listBody = (await getListRes.json()) as any;
+      expect(listBody.data.some((t: any) => t.id === taskId)).toBe(false);
     });
   });
 });

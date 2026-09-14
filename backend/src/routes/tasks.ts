@@ -68,6 +68,43 @@ export const taskRoutes = (options?: TaskRouteOptions) => {
         requireAuth: true,
       }
     )
+    .get(
+      "/:id",
+      async ({ currentUser, params: { id }, set }) => {
+        try {
+          const taskId = Number(id);
+          if (isNaN(taskId)) {
+            set.status = 400;
+            return {
+              success: false,
+              error: "Invalid task ID",
+            };
+          }
+
+          const task = await tSvc.getTaskById(currentUser!.id, taskId);
+          return {
+            success: true,
+            data: task,
+          };
+        } catch (error: any) {
+          if (error?.message === "Task not found") {
+            set.status = 404;
+          } else {
+            set.status = 400;
+          }
+          return {
+            success: false,
+            error: error?.message || "Failed to fetch task",
+          };
+        }
+      },
+      {
+        requireAuth: true,
+        params: t.Object({
+          id: t.String(),
+        }),
+      }
+    )
     .patch(
       "/:id",
       async ({ currentUser, params: { id }, body, set }) => {
@@ -81,10 +118,10 @@ export const taskRoutes = (options?: TaskRouteOptions) => {
             };
           }
 
-          const updated = await tSvc.updateTaskStatus(
+          const updated = await tSvc.updateTask(
             currentUser!.id,
             taskId,
-            body.status
+            body
           );
 
           return {
@@ -99,7 +136,7 @@ export const taskRoutes = (options?: TaskRouteOptions) => {
           }
           return {
             success: false,
-            error: error?.message || "Failed to update task status",
+            error: error?.message || "Failed to update task",
           };
         }
       },
@@ -109,11 +146,54 @@ export const taskRoutes = (options?: TaskRouteOptions) => {
           id: t.String(),
         }),
         body: t.Object({
-          status: t.Union([
-            t.Literal("NOT_STARTED"),
-            t.Literal("IN_PROGRESS"),
-            t.Literal("COMPLETED"),
-          ]),
+          title: t.Optional(t.String({ minLength: 1 })),
+          deadline: t.Optional(t.String()),
+          importance: t.Optional(t.Number({ minimum: 1, maximum: 5 })),
+          estimatedMinutes: t.Optional(t.Number({ minimum: 1 })),
+          status: t.Optional(
+            t.Union([
+              t.Literal("NOT_STARTED"),
+              t.Literal("IN_PROGRESS"),
+              t.Literal("COMPLETED"),
+            ])
+          ),
+        }),
+      }
+    )
+    .delete(
+      "/:id",
+      async ({ currentUser, params: { id }, set }) => {
+        try {
+          const taskId = Number(id);
+          if (isNaN(taskId)) {
+            set.status = 400;
+            return {
+              success: false,
+              error: "Invalid task ID",
+            };
+          }
+
+          await tSvc.softDeleteTask(currentUser!.id, taskId);
+          return {
+            success: true,
+            message: "Task deleted successfully",
+          };
+        } catch (error: any) {
+          if (error?.message === "Task not found") {
+            set.status = 404;
+          } else {
+            set.status = 400;
+          }
+          return {
+            success: false,
+            error: error?.message || "Failed to delete task",
+          };
+        }
+      },
+      {
+        requireAuth: true,
+        params: t.Object({
+          id: t.String(),
         }),
       }
     )

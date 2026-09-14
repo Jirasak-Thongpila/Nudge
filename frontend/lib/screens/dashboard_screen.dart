@@ -6,6 +6,7 @@ import '../services/api_client.dart';
 import 'add_task_screen.dart';
 import 'task_list_screen.dart';
 import 'focus_timer_screen.dart';
+import 'task_detail_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final ApiClient apiClient;
@@ -70,6 +71,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
           backgroundColor: Color(0xFF10B981),
         ),
       );
+    }
+  }
+
+  Future<void> _openTaskDetail(Task task) async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => TaskDetailScreen(
+          task: task,
+          apiClient: _apiClient,
+        ),
+      ),
+    );
+    if (result == true) {
+      _loadDashboard();
     }
   }
 
@@ -201,15 +216,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     color: Colors.grey.shade600,
                   ),
                 ),
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.info_outline_rounded, size: 20, color: Color(0xFF6366F1)),
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'ดูรายละเอียด',
+                  onPressed: () => _openTaskDetail(task),
+                ),
               ],
             ),
             const SizedBox(height: 12),
-            Text(
-              task.title,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                height: 1.2,
+            GestureDetector(
+              onTap: () => _openTaskDetail(task),
+              child: Text(
+                task.title,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  height: 1.2,
+                ),
               ),
             ),
             const SizedBox(height: 10),
@@ -343,6 +368,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               side: BorderSide(color: Colors.grey.shade200),
             ),
             child: ListTile(
+              onTap: () => _openTaskDetail(t),
               title: Text(
                 t.title,
                 style: const TextStyle(fontWeight: FontWeight.w600),

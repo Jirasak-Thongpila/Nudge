@@ -25,6 +25,14 @@ export interface CreateTaskInput {
   estimatedMinutes: number;
 }
 
+export interface UpdateTaskInput {
+  title?: string;
+  deadline?: Date | string;
+  importance?: number;
+  estimatedMinutes?: number;
+  status?: TaskStatus;
+}
+
 export interface DashboardData {
   recommended: RecommendationResult | null;
   next: TaskWithPriority[];
@@ -105,16 +113,25 @@ export class TaskService {
     return rows.map((task) => this.attachDerivedFields(task, now));
   }
 
-  async updateTaskStatus(
-    userId: number,
-    taskId: number,
-    status: TaskStatus
-  ): Promise<TaskWithDerived> {
-    const allowedStatuses: TaskStatus[] = ["NOT_STARTED", "IN_PROGRESS", "COMPLETED"];
-    if (!allowedStatuses.includes(status)) {
-      throw new Error(`Invalid status: ${status}. Allowed: ${allowedStatuses.join(", ")}`);
+  async getTaskById(userId: number, taskId: number): Promise<TaskWithDerived> {
+    const [task] = await this.db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId), isNull(tasks.deletedAt)))
+      .limit(1);
+
+    if (!task) {
+      throw new Error("Task not found");
     }
 
+    return this.attachDerivedFields(task);
+  }
+
+  async updateTask(
+    userId: number,
+    taskId: number,
+    input: UpdateTaskInput
+  ): Promise<TaskWithDerived> {
     const [existing] = await this.db
       .select()
       .from(tasks)
@@ -125,13 +142,84 @@ export class TaskService {
       throw new Error("Task not found");
     }
 
+    const updates: Partial<typeof tasks.$inferInsert> = {};
+
+    if (input.title !== undefined) {
+      const title = input.title.trim();
+      if (!title) {
+        throw new Error("Task title cannot be empty");
+      }
+      updates.title = title;
+    }
+
+    if (input.deadline !== undefined) {
+      const deadline = new Date(input.deadline);
+      if (isNaN(deadline.getTime())) {
+        throw new Error("Invalid deadline format");
+      }
+      updates.deadline = deadline;
+    }
+
+    if (input.importance !== undefined) {
+      const importance = Math.round(Number(input.importance));
+      if (isNaN(importance) || importance < 1 || importance > 5) {
+        throw new Error("Importance must be an integer between 1 and 5");
+      }
+      updates.importance = importance;
+    }
+
+    if (input.estimatedMinutes !== undefined) {
+      const estimatedMinutes = Math.round(Number(input.estimatedMinutes));
+      if (isNaN(estimatedMinutes) || estimatedMinutes <= 0) {
+        throw new Error("Estimated duration must be greater than 0 minutes");
+      }
+      updates.estimatedMinutes = estimatedMinutes;
+    }
+
+    if (input.status !== undefined) {
+      const allowedStatuses: TaskStatus[] = ["NOT_STARTED", "IN_PROGRESS", "COMPLETED"];
+      if (!allowedStatuses.includes(input.status)) {
+        throw new Error(`Invalid status: ${input.status}. Allowed: ${allowedStatuses.join(", ")}`);
+      }
+      updates.status = input.status;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return this.attachDerivedFields(existing);
+    }
+
     const [updated] = await this.db
       .update(tasks)
-      .set({ status })
+      .set(updates)
       .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)))
       .returning();
 
     return this.attachDerivedFields(updated);
+  }
+
+  async updateTaskStatus(
+    userId: number,
+    taskId: number,
+    status: TaskStatus
+  ): Promise<TaskWithDerived> {
+    return this.updateTask(userId, taskId, { status });
+  }
+
+  async softDeleteTask(userId: number, taskId: number): Promise<void> {
+    const [existing] = await this.db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId), isNull(tasks.deletedAt)))
+      .limit(1);
+
+    if (!existing) {
+      throw new Error("Task not found");
+    }
+
+    await this.db
+      .update(tasks)
+      .set({ deletedAt: new Date() })
+      .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)));
   }
 
   async postponeTask(userId: number, taskId: number): Promise<TaskWithDerived> {

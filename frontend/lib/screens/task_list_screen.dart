@@ -4,6 +4,7 @@ import '../models/user.dart';
 import '../services/api_client.dart';
 import 'add_task_screen.dart';
 import 'focus_timer_screen.dart';
+import 'task_detail_screen.dart';
 
 class TaskListScreen extends StatefulWidget {
   final ApiClient apiClient;
@@ -163,6 +164,21 @@ class _TaskListScreenState extends State<TaskListScreen> {
     }
   }
 
+  Future<void> _openTaskDetail(Task task) async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TaskDetailScreen(
+          task: task,
+          apiClient: widget.apiClient,
+        ),
+      ),
+    );
+    if (result == true) {
+      _fetchTasks();
+    }
+  }
+
   String _formatDate(DateTime dt) {
     return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
@@ -314,9 +330,12 @@ class _TaskListScreenState extends State<TaskListScreen> {
                                 : task.isPotentiallyAvoided
                                     ? const Color(0xFFFFFDF5)
                                     : Colors.white,
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              onTap: () => _openTaskDetail(task),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
@@ -499,8 +518,9 @@ class _TaskListScreenState extends State<TaskListScreen> {
                                 ],
                               ),
                             ),
-                          );
-                        },
+                          ),
+                        );
+                      },
                       ),
                     ),
       floatingActionButton: FloatingActionButton.extended(
