@@ -444,7 +444,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 8, vertical: 2),
                                         decoration: BoxDecoration(
-                                          color: importanceColor.withOpacity(0.12),
+                                          color: importanceColor.withValues(alpha: 0.12),
                                           borderRadius:
                                               BorderRadius.circular(6),
                                         ),
@@ -521,6 +521,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
                                             style: TextStyle(fontSize: 12),
                                           ),
                                         ),
+                                      ],
                                     ],
                                   ),
                                 ],

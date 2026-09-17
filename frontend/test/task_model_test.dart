@@ -65,7 +65,7 @@ void main() {
       expect(rec.task.id, 102);
       expect(rec.suggestedAction, 'START_10_MINUTES');
       expect(rec.task.priorityScore, 19);
-      expect(rec.recommendationReason).toContain('10 นาที');
+      expect(rec.recommendationReason, contains('10 นาที'));
       expect(rec.adaptiveNudgeMessage, 'งานนี้ถูกเลื่อนหลายครั้ง ลองแบ่งงานเป็นขั้นเล็ก ๆ ไหม?');
     });
   });

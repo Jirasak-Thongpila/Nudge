@@ -41,6 +41,12 @@ class Task {
   bool get isInProgress => status == 'IN_PROGRESS';
   bool get isNotStarted => status == 'NOT_STARTED';
 
+  String get daysRemainingText {
+    if (isOverdue) return 'เกินกำหนด ${-daysRemaining} วัน';
+    if (isDueToday) return 'ครบกำหนดวันนี้';
+    return 'เหลืออีก $daysRemaining วัน';
+  }
+
   factory Task.fromJson(Map<String, dynamic> json) {
     return Task(
       id: json['id'] as int,

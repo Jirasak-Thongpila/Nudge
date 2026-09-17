@@ -146,6 +146,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('ไม่สามารถเปลี่ยนสถานะได้: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _sendLineActionNudge() async {
     setState(() => _isProcessing = true);
     try {

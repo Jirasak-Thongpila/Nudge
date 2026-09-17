@@ -58,12 +58,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       MaterialPageRoute(
         builder: (_) => FocusTimerScreen(
           task: task,
-          apiClient: _apiClient,
+          apiClient: widget.apiClient,
         ),
       ),
     );
     // Reload dashboard after returning from focus session
-    _loadDashboard();
+    _fetchDashboard();
     if (result == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -79,12 +79,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       MaterialPageRoute(
         builder: (_) => TaskDetailScreen(
           task: task,
-          apiClient: _apiClient,
+          apiClient: widget.apiClient,
         ),
       ),
     );
     if (result == true) {
-      _loadDashboard();
+      _fetchDashboard();
     }
   }
 
@@ -136,7 +136,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildRecommendationHero(DashboardData data) {
     final rec = data.recommended;
     if (rec == null) {
-      final hasCompleted = data.summary.completedCount > 0;
+      final hasCompleted = data.completedCount > 0;
       return Card(
         elevation: 1,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

@@ -39,7 +39,6 @@ class WalkingSkeletonScreen extends StatefulWidget {
 class _WalkingSkeletonScreenState extends State<WalkingSkeletonScreen> {
   final ApiClient _apiClient = ApiClient();
   bool _isLoading = true;
-  bool _isBackendHealthy = false;
   User? _user;
   String? _errorMessage;
 
@@ -63,14 +62,12 @@ class _WalkingSkeletonScreenState extends State<WalkingSkeletonScreen> {
 
       final user = await _apiClient.getCurrentUser();
       setState(() {
-        _isBackendHealthy = true;
         _user = user;
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _isBackendHealthy = false;
         _errorMessage = e.toString();
       });
     }

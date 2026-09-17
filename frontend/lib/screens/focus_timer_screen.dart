@@ -24,7 +24,6 @@ class _FocusTimerScreenState extends State<FocusTimerScreen> {
   late int _remainingSeconds;
   Timer? _timer;
   bool _isRunning = false;
-  bool _isSaving = false;
   int _elapsedSeconds = 0;
 
   @override
@@ -75,7 +74,6 @@ class _FocusTimerScreenState extends State<FocusTimerScreen> {
   }
 
   Future<void> _onTimerComplete() async {
-    setState(() => _isSaving = true);
     try {
       final minutes = (widget.totalSeconds / 60).round();
       await _apiClient.recordFocusSession(
@@ -87,7 +85,6 @@ class _FocusTimerScreenState extends State<FocusTimerScreen> {
       // Ignored non-critical
     } finally {
       if (mounted) {
-        setState(() => _isSaving = false);
         _showCompletionSheet();
       }
     }
@@ -439,12 +436,10 @@ class _FocusTimerScreenState extends State<FocusTimerScreen> {
                 children: [
                   // Cancel button
                   IconButton.filledTonal(
-                    style: IconButton.filledTonal(
-                      style: ButtonStyle(
-                        backgroundColor: WidgetStateProperty.all(const Color(0xFF1E293B)),
-                        padding: WidgetStateProperty.all(const EdgeInsets.all(16)),
-                      ),
-                    ).style,
+                    style: IconButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E293B),
+                      padding: const EdgeInsets.all(16),
+                    ),
                     icon: const Icon(Icons.stop_rounded, color: Color(0xFFEF4444), size: 28),
                     tooltip: 'หยุดพักก่อน',
                     onPressed: _handleGiveUp,
