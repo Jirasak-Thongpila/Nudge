@@ -56,7 +56,11 @@ export class LineService {
   /**
    * Constructs an empathetic LINE Flex Message containing a direct deep-link CTA.
    */
-  createActionNudgeFlexMessage(task: TaskWithDerived): LineFlexMessage {
+  createActionNudgeFlexMessage(
+    task: Pick<TaskWithDerived, "id" | "title" | "importance" | "daysRemaining"> & {
+      adaptiveNudgeMessage?: string;
+    }
+  ): LineFlexMessage {
     const deepLinkUrl = this.liffId
       ? `https://liff.line.me/${this.liffId}?taskId=${task.id}`
       : `nudge://focus?taskId=${task.id}`;
@@ -409,23 +413,7 @@ export class LineService {
 
     // If channel token is provided, execute real HTTP request to LINE Messaging API
     if (this.channelAccessToken) {
-      const response = await fetch("https://api.line.me/v2/bot/message/push", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this.channelAccessToken}`,
-        },
-        body: JSON.stringify({
-          to: user.lineUserId,
-          messages: [flexMessage],
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`LINE push API error: ${response.status} - ${errorText}`);
-        throw new Error(`LINE API error: ${response.status} - ${errorText}`);
-      }
+      await this.pushMessages(user.lineUserId, [flexMessage]);
     }
 
     return {
@@ -434,6 +422,63 @@ export class LineService {
       recipientLineUserId: user.lineUserId,
       flexMessage,
     };
+  }
+
+  /**
+   * Starts a loading animation (chat dots) in the LINE chat.
+   */
+  async sendLoadingIndicator(chatId: string, loadingSeconds: number = 5): Promise<boolean> {
+    if (!this.channelAccessToken) return false;
+    try {
+      const response = await fetch("https://api.line.me/v2/bot/chat/loading/start", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.channelAccessToken}`,
+        },
+        body: JSON.stringify({
+          chatId,
+          loadingSeconds,
+        }),
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Sends push messages to a specific LINE user ID.
+   */
+  async pushMessages(to: string, messages: any[]): Promise<boolean> {
+    if (!this.channelAccessToken) {
+      console.warn("LINE pushMessages: channelAccessToken is not set");
+      return false;
+    }
+
+    try {
+      const response = await fetch("https://api.line.me/v2/bot/message/push", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.channelAccessToken}`,
+        },
+        body: JSON.stringify({
+          to,
+          messages,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`LINE push API error: ${response.status} - ${errorText}`);
+      }
+
+      return response.ok;
+    } catch (e) {
+      console.error("Failed to send LINE push:", e);
+      return false;
+    }
   }
 
   /**
@@ -494,31 +539,64 @@ export class LineService {
         repliesSent++;
       } else if (event.type === "message" && event.message?.type === "text") {
         const text = (event.message.text || "").trim();
+        const lower = text.toLowerCase();
         const user = await this.userService.getOrCreateUserByLineUserId(lineUserId);
 
-        const intentResult = await this.geminiService.parseTaskIntent(text);
+        // Fast path for immediate single-turn commands
+        const isIdQuery =
+          lower === "id" || lower === "uid" || lower === "userid" || lower === "ไอดี" || lower === "ขอไอดี";
+        const isViewQuery =
+          lower === "งาน" ||
+          lower === "งานวันนี้" ||
+          lower === "งานทั้งหมด" ||
+          lower === "ดูงาน" ||
+          lower === "ดูงานทั้งหมด" ||
+          lower === "รายการงาน" ||
+          lower === "งานค้าง" ||
+          lower === "มีงานอะไรบ้าง" ||
+          lower === "งานที่ต้องทำ" ||
+          lower === "เช็คงาน" ||
+          lower === "tasks" ||
+          lower === "task" ||
+          lower === "all tasks" ||
+          lower === "list" ||
+          lower === "todo" ||
+          lower.startsWith("ดูงาน") ||
+          lower.startsWith("ขอดูงาน") ||
+          lower.startsWith("รายการ");
+        const isRecQuery =
+          lower === "แนะนำ" ||
+          lower === "nudge" ||
+          lower === "focus" ||
+          lower === "เริ่ม" ||
+          lower === "ทำอะไรดี" ||
+          lower === "เริ่มงานไหนดี" ||
+          lower.includes("แนะนำ");
+        const isHelpQuery =
+          lower === "help" ||
+          lower === "ช่วยเหลือ" ||
+          lower === "วิธีใช้" ||
+          lower === "คำสั่ง" ||
+          lower === "ทำอะไรได้บ้าง";
 
-        if (intentResult.intent === "CREATE_TASK") {
-          const newTask = await this.taskService.createTask(user.id, {
-            title: intentResult.title || text,
-            deadline: intentResult.deadline || new Date(Date.now() + 86400000).toISOString(),
-            importance: intentResult.importance || 3,
-            estimatedMinutes: intentResult.estimatedMinutes || 30,
-          });
-
-          const flex = this.createTaskCreatedFlexMessage(newTask);
-          await this.replyMessage(replyToken, [flex]);
+        if (isIdQuery) {
+          await this.replyMessage(replyToken, [
+            { type: "text", text: `🆔 LINE User ID ของคุณคือ:\n${lineUserId}` },
+          ]);
           repliesSent++;
-        } else if (intentResult.intent === "VIEW_TASKS") {
+        } else if (isViewQuery) {
           const tasks = await this.taskService.getTasksForUser(user.id);
           const activeTasks = tasks.filter((t) => t.status !== "COMPLETED");
           const flex = this.createTaskListFlexMessage(activeTasks);
           await this.replyMessage(replyToken, [flex]);
           repliesSent++;
-        } else if (intentResult.intent === "GET_RECOMMENDATION") {
+        } else if (isRecQuery) {
           const rec = await this.taskService.getRecommendedTask(user.id);
           if (rec) {
-            const flex = this.createActionNudgeFlexMessage(rec);
+            const flex = this.createActionNudgeFlexMessage({
+              ...rec.task,
+              adaptiveNudgeMessage: rec.adaptiveNudgeMessage,
+            });
             await this.replyMessage(replyToken, [flex]);
           } else {
             await this.replyMessage(replyToken, [
@@ -529,24 +607,77 @@ export class LineService {
             ]);
           }
           repliesSent++;
-        } else if (intentResult.intent === "GET_ID") {
-          await this.replyMessage(replyToken, [
-            {
-              type: "text",
-              text: `🆔 LINE User ID ของคุณคือ:\n${lineUserId}`,
-            },
-          ]);
-          repliesSent++;
-        } else {
+        } else if (isHelpQuery) {
           await this.replyMessage(replyToken, [
             {
               type: "text",
               text:
-                intentResult.replyMessage ||
-                `สวัสดีครับ! สามารถพิมพ์บอกงาน เช่น "พรุ่งนี้ส่งโปรเจกต์" หรือพิมพ์ "งานวันนี้" เพื่อดูงานได้เลยครับ 🌱`,
+                "🌱 Nudge Assistant พร้อมช่วยคุณเริ่มต้นงานสำคัญ:\n\n" +
+                "• พิมพ์บอกงาน เช่น 'พรุ่งนี้ 9 โมงส่งมินิโปรเจกต์ สำคัญมาก'\n" +
+                "• พิมพ์ 'งานทั้งหมด' เพื่อดูรายการงานทั้งหมด\n" +
+                "• พิมพ์ 'แนะนำ' เพื่อดูงานที่ควรเริ่มทำ 10 นาทีแรก\n" +
+                "• พิมพ์ 'id' เพื่อดู LINE User ID ของคุณ",
             },
           ]);
           repliesSent++;
+        } else {
+          // Natural language task creation or query:
+          // Parse intent with Gemini 2.5 Flash first so the "saving" acknowledgement
+          // is only shown when we are actually creating a task.
+          const intentResult = await this.geminiService.parseTaskIntent(text);
+
+          if (intentResult.intent === "CREATE_TASK") {
+            // 1. Trigger loading indicator and send immediate acknowledgment via replyToken
+            this.sendLoadingIndicator(lineUserId, 5).catch(() => {});
+            await this.replyMessage(replyToken, [
+              { type: "text", text: "กำลังบันทึกข้อมูลงานครับ... ⏳" },
+            ]);
+            repliesSent++;
+
+            // 2. Save the task and push the created-task Flex Card
+            const newTask = await this.taskService.createTask(user.id, {
+              title: intentResult.title || text,
+              deadline: intentResult.deadline || new Date(Date.now() + 86400000).toISOString(),
+              importance: intentResult.importance || 3,
+              estimatedMinutes: intentResult.estimatedMinutes || 30,
+            });
+
+            const flex = this.createTaskCreatedFlexMessage(newTask);
+            await this.pushMessages(lineUserId, [flex]);
+          } else if (intentResult.intent === "VIEW_TASKS") {
+            const tasks = await this.taskService.getTasksForUser(user.id);
+            const activeTasks = tasks.filter((t) => t.status !== "COMPLETED");
+            const flex = this.createTaskListFlexMessage(activeTasks);
+            await this.replyMessage(replyToken, [flex]);
+            repliesSent++;
+          } else if (intentResult.intent === "GET_RECOMMENDATION") {
+            const rec = await this.taskService.getRecommendedTask(user.id);
+            if (rec) {
+              const flex = this.createActionNudgeFlexMessage({
+                ...rec.task,
+                adaptiveNudgeMessage: rec.adaptiveNudgeMessage,
+              });
+              await this.replyMessage(replyToken, [flex]);
+            } else {
+              await this.replyMessage(replyToken, [
+                {
+                  type: "text",
+                  text: "🎉 ยอดเยี่ยมมากครับ! ตอนนี้คุณไม่มีงานค้างเลย พักผ่อนให้สบายใจ หรือพิมพ์บอกงานใหม่ได้เสมอนะครับ",
+                },
+              ]);
+            }
+            repliesSent++;
+          } else {
+            await this.replyMessage(replyToken, [
+              {
+                type: "text",
+                text:
+                  intentResult.replyMessage ||
+                  `สวัสดีครับ! สามารถพิมพ์บอกงาน เช่น "พรุ่งนี้ส่งโปรเจกต์" หรือพิมพ์ "งานวันนี้" เพื่อดูงานได้เลยครับ 🌱`,
+              },
+            ]);
+            repliesSent++;
+          }
         }
       }
     }

@@ -7,7 +7,7 @@ import { GeminiService, type TaskIntentResult } from "../src/services/gemini.ser
 import type { User, Task } from "../src/db/schema";
 import { calculateDaysRemaining } from "../src/lib/date";
 import { calculateAvoidanceScore, detectPotentiallyAvoided } from "../src/lib/avoidance";
-import { getAdaptiveNudgeMessage } from "../src/lib/priority";
+import { calculateTaskPriority, getAdaptiveNudgeMessage, type RecommendationResult } from "../src/lib/priority";
 
 class MockUserService extends UserService {
   public store: User[] = [];
@@ -83,14 +83,17 @@ class MockTaskService extends TaskService {
       .map((t) => this.attachDerivedFields(t));
   }
 
-  override async getUserTasks(userId: number): Promise<TaskWithDerived[]> {
-    return this.getTasksForUser(userId);
-  }
-
-  override async getRecommendedTask(userId: number): Promise<TaskWithDerived | null> {
-    const tasks = await this.getUserTasks(userId);
+  override async getRecommendedTask(userId: number): Promise<RecommendationResult | null> {
+    const tasks = await this.getTasksForUser(userId);
     const active = tasks.filter((t) => t.status !== "COMPLETED");
-    return active[0] ?? null;
+    if (active.length === 0) return null;
+    const top = active[0];
+    return {
+      task: calculateTaskPriority(top),
+      suggestedAction: "START_10_MINUTES",
+      recommendationReason: "งานสำคัญที่สุดที่ควรทำในตอนนี้",
+      adaptiveNudgeMessage: getAdaptiveNudgeMessage(top.postponeCount),
+    };
   }
 
   override attachDerivedFields(task: Task, now: Date = new Date()): TaskWithDerived {
@@ -199,8 +202,13 @@ describe("LINE Auth & Gemini AI Chatbot", () => {
       };
 
       let sentReplies: any[] = [];
+      let sentPushes: any[] = [];
       lineService.replyMessage = async (_token, messages) => {
         sentReplies = messages;
+        return true;
+      };
+      lineService.pushMessages = async (_to, messages) => {
+        sentPushes = messages;
         return true;
       };
 
@@ -228,9 +236,15 @@ describe("LINE Auth & Gemini AI Chatbot", () => {
       expect(mockTaskService.store[0].title).toBe("การบ้านแคลคูลัส");
       expect(mockTaskService.store[0].importance).toBe(5);
 
+      // 1. Immediate acknowledgment is sent via replyToken
       expect(sentReplies.length).toBe(1);
-      expect(sentReplies[0].type).toBe("flex");
-      expect(sentReplies[0].altText).toContain("การบ้านแคลคูลัส");
+      expect(sentReplies[0].type).toBe("text");
+      expect(sentReplies[0].text).toContain("กำลังบันทึก");
+
+      // 2. Created task Flex Card is pushed right after AI extraction
+      expect(sentPushes.length).toBe(1);
+      expect(sentPushes[0].type).toBe("flex");
+      expect(sentPushes[0].altText).toContain("การบ้านแคลคูลัส");
     });
 
     it("should return tasks list when intent is VIEW_TASKS", async () => {
@@ -273,6 +287,53 @@ describe("LINE Auth & Gemini AI Chatbot", () => {
       expect(sentReplies.length).toBe(1);
       expect(sentReplies[0].type).toBe("flex");
       expect(sentReplies[0].altText).toContain("1 รายการ");
+    });
+
+    it("should not show saving acknowledgement for non-task messages", async () => {
+      mockGeminiService.mockResult = {
+        intent: "UNKNOWN",
+        replyMessage: "สวัสดีครับ! มีอะไรให้ช่วยไหมครับ",
+      };
+
+      let sentReplies: any[] = [];
+      let sentPushes: any[] = [];
+      lineService.replyMessage = async (_token, messages) => {
+        sentReplies = messages;
+        return true;
+      };
+      lineService.pushMessages = async (_to, messages) => {
+        sentPushes = messages;
+        return true;
+      };
+
+      const res = await app.handle(
+        new Request("http://localhost/line/webhook", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            destination: "Ubot",
+            events: [
+              {
+                type: "message",
+                replyToken: "reply-chat",
+                source: { userId: "UuserChat" },
+                message: { type: "text", text: "สวัสดี Nudge AI" },
+                timestamp: Date.now(),
+              },
+            ],
+          }),
+        })
+      );
+
+      expect(res.status).toBe(200);
+      expect(mockTaskService.store.length).toBe(0);
+
+      // The bot answers directly via replyToken without the "saving" ack
+      expect(sentReplies.length).toBe(1);
+      expect(sentReplies[0].type).toBe("text");
+      expect(sentReplies[0].text).toContain("สวัสดีครับ");
+      expect(sentReplies[0].text).not.toContain("กำลังบันทึก");
+      expect(sentPushes.length).toBe(0);
     });
   });
 });
