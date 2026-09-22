@@ -333,6 +333,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
                     );
                     if (date != null) {
+                      if (!context.mounted) return;
                       final time = await showTimePicker(
                         context: context,
                         initialTime: TimeOfDay.fromDateTime(selectedDeadline),
