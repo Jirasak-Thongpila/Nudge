@@ -3,10 +3,12 @@ import '../models/dashboard_data.dart';
 import '../models/task.dart';
 import '../models/user.dart';
 import '../services/api_client.dart';
+import '../services/liff_service.dart';
 import 'add_task_screen.dart';
 import 'task_list_screen.dart';
 import 'focus_timer_screen.dart';
 import 'task_detail_screen.dart';
+import 'login_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final ApiClient apiClient;
@@ -457,6 +459,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Future<void> _confirmLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('ออกจากระบบ'),
+        content: Text(
+          widget.user.lineUserId != null
+              ? 'ต้องการออกจากระบบ LINE (${widget.user.lineUserId}) หรือไม่?'
+              : 'ต้องการออกจากระบบหรือไม่? (ข้อมูล Guest จะยังคงอยู่ในเครื่องนี้)',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('ยกเลิก'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('ออกจากระบบ'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      LiffService.instance.logout();
+      widget.apiClient.setLineUserId(null);
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => LoginScreen(apiClient: widget.apiClient),
+        ),
+        (route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -483,6 +521,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: const Icon(Icons.refresh),
             tooltip: 'รีเฟรช',
             onPressed: _fetchDashboard,
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.account_circle_outlined),
+            tooltip: 'บัญชีผู้ใช้',
+            onSelected: (value) {
+              if (value == 'logout') {
+                _confirmLogout();
+              }
+            },
+            itemBuilder: (ctx) => [
+              PopupMenuItem(
+                enabled: false,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      widget.user.lineUserId != null
+                          ? 'LINE Connected'
+                          : 'Guest User',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.user.lineUserId ?? 'ID #${widget.user.id}',
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout, size: 18, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('ออกจากระบบ', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

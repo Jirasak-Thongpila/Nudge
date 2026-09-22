@@ -6,6 +6,7 @@ import 'services/deep_link_service.dart';
 import 'services/liff_service.dart';
 import 'screens/task_list_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/login_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,7 +27,7 @@ class NudgeApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const WalkingSkeletonScreen(),
+      home: const LoginScreen(),
     );
   }
 }
