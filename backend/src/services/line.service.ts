@@ -250,7 +250,7 @@ export class LineService {
             height: "sm",
             action: {
               type: "uri",
-              label: "🌱 เริ่ม 10 นาทีใน LIFF",
+              label: "เริ่ม 10 นาที",
               uri: liffUrl,
             },
           },
@@ -375,7 +375,7 @@ export class LineService {
             height: "sm",
             action: {
               type: "uri",
-              label: "เปิดดูงานทั้งหมดใน LIFF",
+              label: "ดูงานทั้งหมด",
               uri: liffBaseUrl,
             },
           },
@@ -423,6 +423,7 @@ export class LineService {
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error(`LINE push API error: ${response.status} - ${errorText}`);
         throw new Error(`LINE API error: ${response.status} - ${errorText}`);
       }
     }
@@ -440,6 +441,7 @@ export class LineService {
    */
   async replyMessage(replyToken: string, messages: any[]): Promise<boolean> {
     if (!this.channelAccessToken) {
+      console.warn("LINE replyMessage: channelAccessToken is not set");
       return false;
     }
 
@@ -455,6 +457,11 @@ export class LineService {
           messages,
         }),
       });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`LINE reply API error: ${response.status} - ${errorText}`);
+      }
 
       return response.ok;
     } catch (e) {
@@ -503,7 +510,7 @@ export class LineService {
           await this.replyMessage(replyToken, [flex]);
           repliesSent++;
         } else if (intentResult.intent === "VIEW_TASKS") {
-          const tasks = await this.taskService.getUserTasks(user.id);
+          const tasks = await this.taskService.getTasksForUser(user.id);
           const activeTasks = tasks.filter((t) => t.status !== "COMPLETED");
           const flex = this.createTaskListFlexMessage(activeTasks);
           await this.replyMessage(replyToken, [flex]);
@@ -549,4 +556,5 @@ export class LineService {
 }
 
 export const lineService = new LineService();
+
 
