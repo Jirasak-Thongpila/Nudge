@@ -1,4 +1,5 @@
 import { describe, expect, it, beforeEach } from "bun:test";
+import { createHmac } from "node:crypto";
 import { createApp } from "../src/app";
 import { UserService } from "../src/services/user.service";
 import {
@@ -11,6 +12,8 @@ import type { User, Task } from "../src/db/schema";
 import { calculateDaysRemaining } from "../src/lib/date";
 import { calculateAvoidanceScore, detectPotentiallyAvoided } from "../src/lib/avoidance";
 import { getAdaptiveNudgeMessage } from "../src/lib/priority";
+import { verifyLineSignature } from "../src/lib/line-signature";
+import { GeminiService } from "../src/services/gemini.service";
 
 class MockUserService extends UserService {
   public store: User[] = [];
@@ -72,6 +75,12 @@ class MockTaskService extends TaskService {
     return this.attachDerivedFields(task);
   }
 
+  override async getTasksForUser(userId: number): Promise<TaskWithDerived[]> {
+    return this.store
+      .filter((t) => t.userId === userId && !t.deletedAt)
+      .map((t) => this.attachDerivedFields(t));
+  }
+
   override attachDerivedFields(task: Task, now: Date = new Date()): TaskWithDerived {
     const daysRemaining = calculateDaysRemaining(task.deadline, now);
     const avoidanceScore = calculateAvoidanceScore(task.postponeCount);
@@ -93,6 +102,13 @@ class MockTaskService extends TaskService {
   }
 }
 
+const TEST_CHANNEL_SECRET = "test-channel-secret";
+
+/** Computes the LINE `X-Line-Signature` for a raw request body. */
+function signLineBody(rawBody: string): string {
+  return createHmac("sha256", TEST_CHANNEL_SECRET).update(rawBody, "utf8").digest("base64");
+}
+
 describe("LINE OA Messaging & Deep Link (Ticket 09)", () => {
   let app: ReturnType<typeof createApp>;
   let mockUserService: MockUserService;
@@ -102,7 +118,8 @@ describe("LINE OA Messaging & Deep Link (Ticket 09)", () => {
   beforeEach(() => {
     mockUserService = new MockUserService();
     mockTaskService = new MockTaskService();
-    lineService = new LineService(mockUserService, mockTaskService);
+    // Explicit secret enables signature verification for every webhook test.
+    lineService = new LineService(mockUserService, mockTaskService, new GeminiService(""), "", TEST_CHANNEL_SECRET, "");
 
     app = createApp({
       userService: mockUserService,
@@ -204,20 +221,25 @@ describe("LINE OA Messaging & Deep Link (Ticket 09)", () => {
 
   describe("POST /line/webhook", () => {
     it("should handle incoming LINE webhook events and return 200 ok", async () => {
+      const rawBody = JSON.stringify({
+        destination: "Ubot123",
+        events: [
+          {
+            type: "follow",
+            source: { userId: "Uuser999" },
+            timestamp: Date.now(),
+          },
+        ],
+      });
+
       const res = await app.handle(
         new Request("http://localhost/line/webhook", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            destination: "Ubot123",
-            events: [
-              {
-                type: "follow",
-                source: { userId: "Uuser999" },
-                timestamp: Date.now(),
-              },
-            ],
-          }),
+          headers: {
+            "Content-Type": "application/json",
+            "x-line-signature": signLineBody(rawBody),
+          },
+          body: rawBody,
         })
       );
 
@@ -236,28 +258,33 @@ describe("LINE OA Messaging & Deep Link (Ticket 09)", () => {
         return true;
       };
 
+      const rawBody = JSON.stringify({
+        destination: "Ubot123",
+        events: [
+          {
+            type: "follow",
+            replyToken: "reply-token-123",
+            source: { userId: "Uuser999" },
+            timestamp: Date.now(),
+          },
+          {
+            type: "message",
+            replyToken: "reply-token-123",
+            source: { userId: "Uuser999" },
+            message: { type: "text", text: "id" },
+            timestamp: Date.now(),
+          },
+        ],
+      });
+
       const res = await app.handle(
         new Request("http://localhost/line/webhook", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            destination: "Ubot123",
-            events: [
-              {
-                type: "follow",
-                replyToken: "reply-token-123",
-                source: { userId: "Uuser999" },
-                timestamp: Date.now(),
-              },
-              {
-                type: "message",
-                replyToken: "reply-token-123",
-                source: { userId: "Uuser999" },
-                message: { type: "text", text: "id" },
-                timestamp: Date.now(),
-              },
-            ],
-          }),
+          headers: {
+            "Content-Type": "application/json",
+            "x-line-signature": signLineBody(rawBody),
+          },
+          body: rawBody,
         })
       );
 
@@ -266,6 +293,111 @@ describe("LINE OA Messaging & Deep Link (Ticket 09)", () => {
       expect(body.handledCount).toBe(2);
       expect(body.repliesSent).toBe(2);
       expect(replyCalled).toBe(true);
+    });
+
+    it("should reject a webhook with a missing X-Line-Signature (401)", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/line/webhook", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ destination: "Ubot123", events: [] }),
+        })
+      );
+
+      expect(res.status).toBe(401);
+      const body = (await res.json()) as any;
+      expect(body.success).toBe(false);
+      expect(body.error).toContain("X-Line-Signature");
+    });
+
+    it("should reject a webhook with an invalid signature (401)", async () => {
+      const rawBody = JSON.stringify({ destination: "Ubot123", events: [] });
+
+      const res = await app.handle(
+        new Request("http://localhost/line/webhook", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-line-signature": "not-a-valid-signature",
+          },
+          body: rawBody,
+        })
+      );
+
+      expect(res.status).toBe(401);
+    });
+
+    it("should reject a tampered body even when signed with a valid signature for the original body (401)", async () => {
+      const originalBody = JSON.stringify({ destination: "Ubot123", events: [] });
+      const tamperedBody = JSON.stringify({
+        destination: "Ubot123",
+        events: [{ type: "follow", source: { userId: "Uattacker" } }],
+      });
+
+      const res = await app.handle(
+        new Request("http://localhost/line/webhook", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-line-signature": signLineBody(originalBody),
+          },
+          body: tamperedBody,
+        })
+      );
+
+      expect(res.status).toBe(401);
+    });
+
+    it("should accept a request signed with the channel secret (200)", async () => {
+      const rawBody = JSON.stringify({
+        destination: "Ubot123",
+        events: [
+          {
+            type: "message",
+            replyToken: "rt-1",
+            source: { userId: "Uuser" },
+            message: { type: "text", text: "hello" },
+          },
+        ],
+      });
+
+      const res = await app.handle(
+        new Request("http://localhost/line/webhook", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-line-signature": signLineBody(rawBody),
+          },
+          body: rawBody,
+        })
+      );
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(body.status).toBe("ok");
+      expect(body.handledCount).toBe(1);
+    });
+  });
+
+  describe("verifyLineSignature helper", () => {
+    it("returns false when the secret or signature is missing", () => {
+      expect(verifyLineSignature("{}", "sig", "")).toBe(false);
+      expect(verifyLineSignature("{}", null, "secret")).toBe(false);
+      expect(verifyLineSignature("{}", undefined, "secret")).toBe(false);
+    });
+
+    it("returns true for a correctly computed HMAC-SHA256 signature", () => {
+      const secret = "s3cr3t";
+      const body = '{"events":[]}';
+      const sig = createHmac("sha256", secret).update(body, "utf8").digest("base64");
+      expect(verifyLineSignature(body, sig, secret)).toBe(true);
+    });
+
+    it("returns false for a mismatched or malformed signature", () => {
+      const secret = "s3cr3t";
+      const body = '{"events":[]}';
+      expect(verifyLineSignature(body, "wrong", secret)).toBe(false);
+      expect(verifyLineSignature(body, "aaaa", secret)).toBe(false);
     });
   });
 });

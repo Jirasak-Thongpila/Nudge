@@ -11,6 +11,7 @@ class ApiClient {
   final String baseUrl;
   final AuthService authService;
   final http.Client _httpClient;
+  String? _lineUserId;
 
   ApiClient({
     this.baseUrl = 'http://localhost:3000',
@@ -19,12 +20,20 @@ class ApiClient {
   })  : authService = authService ?? AuthService(),
         _httpClient = httpClient ?? http.Client();
 
+  void setLineUserId(String? lineUserId) {
+    _lineUserId = lineUserId;
+  }
+
   Future<Map<String, String>> _getHeaders() async {
     final deviceUuid = await authService.getOrCreateDeviceUuid();
-    return {
+    final headers = <String, String>{
       'Content-Type': 'application/json',
       'x-device-uuid': deviceUuid,
     };
+    if (_lineUserId != null && _lineUserId!.isNotEmpty) {
+      headers['x-line-user-id'] = _lineUserId!;
+    }
+    return headers;
   }
 
   /// Checks backend liveness
@@ -331,6 +340,29 @@ class ApiClient {
       throw Exception(
         'Failed to link LINE account: ${response.statusCode} - ${response.body}',
       );
+    }
+  }
+
+  /// Authenticates with LINE user profile (Ticket 09 / LIFF)
+  Future<User> loginWithLine(String lineUserId, {String? displayName, String? pictureUrl}) async {
+    _lineUserId = lineUserId;
+    final deviceUuid = await authService.getOrCreateDeviceUuid();
+    final response = await _httpClient.post(
+      Uri.parse('$baseUrl/line/auth'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'lineUserId': lineUserId,
+        'deviceUuid': deviceUuid,
+        'displayName': displayName,
+        'pictureUrl': pictureUrl,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return User.fromJson(data['data'] as Map<String, dynamic>);
+    } else {
+      throw Exception('Failed to authenticate with LINE: ${response.statusCode} - ${response.body}');
     }
   }
 

@@ -86,6 +86,30 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_line_liff:
+    dependency: "direct main"
+    description:
+      name: flutter_line_liff
+      sha256: "2140ba99d2b175d78c00f070ba3571b8bb92279f0c87e2f662c44684b5926959"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0+1"
+  flutter_line_liff_platform_interface:
+    dependency: transitive
+    description:
+      name: flutter_line_liff_platform_interface
+      sha256: "9e20d908c6167d41be0f4da8752023d52d9f8cfab5041e73f00183a7cb2dc201"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
+  flutter_line_liff_web:
+    dependency: transitive
+    description:
+      name: flutter_line_liff_web
+      sha256: "68953e1fddce3229d2ac1b96d5d125fd6a974d974bd2de6fc58a64614cf95249"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   flutter_lints:
     dependency: "direct dev"
     description:
@@ -104,6 +128,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  freezed_annotation:
+    dependency: transitive
+    description:
+      name: freezed_annotation
+      sha256: c2e2d632dd9b8a2b7751117abcfc2b4888ecfe181bd9fca7170d9ef02e595fe2
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.4.4"
   http:
     dependency: "direct main"
     description:
@@ -120,6 +152,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.2"
+  json_annotation:
+    dependency: transitive
+    description:
+      name: json_annotation
+      sha256: "2a743920d81b7910627f68ee2c9ac1fc0bfee32b9fc3403587d7c6791ca12f80"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.12.0"
   leak_tracker:
     dependency: transitive
     description:
@@ -353,10 +393,10 @@ packages:
     dependency: transitive
     description:
       name: vector_math
-      sha256: f36f9f3be64c6198714492bb455c11056e33e2f85d9a0b676a48301e44fdcf47
+      sha256: "1d774bbdf6b72a0b12122fc1560c9c2d2a67db5a4a4cc2bd8a5c990ab20e3188"
       url: "https://pub.dev"
     source: hosted
-    version: "2.4.2"
+    version: "2.4.0"
   vm_service:
     dependency: transitive
     description:

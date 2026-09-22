@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'models/user.dart';
 import 'services/api_client.dart';
 import 'services/deep_link_service.dart';
+import 'services/liff_service.dart';
 import 'screens/task_list_screen.dart';
 import 'screens/dashboard_screen.dart';
 
@@ -60,11 +62,43 @@ class _WalkingSkeletonScreenState extends State<WalkingSkeletonScreen> {
         throw Exception('Backend health check returned non-200 status');
       }
 
-      final user = await _apiClient.getCurrentUser();
+      User? user;
+      if (kIsWeb) {
+        final liffSupported = await LiffService.instance.init();
+        if (liffSupported && LiffService.instance.lineUserId != null) {
+          final profile = LiffService.instance.profile;
+          user = await _apiClient.loginWithLine(
+            LiffService.instance.lineUserId!,
+            displayName: profile?.displayName,
+            pictureUrl: profile?.pictureUrl,
+          );
+        }
+      }
+
+      user ??= await _apiClient.getCurrentUser();
+
       setState(() {
         _user = user;
         _isLoading = false;
       });
+
+      if (kIsWeb && mounted) {
+        final taskIdStr = Uri.base.queryParameters['taskId'];
+        if (taskIdStr != null) {
+          final taskId = int.tryParse(taskIdStr);
+          if (taskId != null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                DeepLinkService.navigateFromDeepLink(
+                  context: context,
+                  apiClient: _apiClient,
+                  uriString: 'nudge://focus?taskId=$taskId',
+                );
+              }
+            });
+          }
+        }
+      }
     } catch (e) {
       setState(() {
         _isLoading = false;

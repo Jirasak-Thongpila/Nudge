@@ -1,5 +1,7 @@
 import { TaskService, taskService as defaultTaskService, type TaskWithDerived } from "./task.service";
 import { UserService, userService as defaultUserService } from "./user.service";
+import { GeminiService, geminiService as defaultGeminiService } from "./gemini.service";
+import { verifyLineSignature } from "../lib/line-signature";
 import type { User } from "../db/schema";
 
 export interface LineFlexMessage {
@@ -17,20 +19,47 @@ export interface LinePushResult {
 
 export class LineService {
   private channelAccessToken: string;
+  private channelSecret: string;
+  private liffId: string;
 
   constructor(
     private userService: UserService = defaultUserService,
     private taskService: TaskService = defaultTaskService,
-    channelAccessToken?: string
+    private geminiService: GeminiService = defaultGeminiService,
+    channelAccessToken?: string,
+    channelSecret?: string,
+    liffId?: string
   ) {
     this.channelAccessToken = channelAccessToken ?? process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
+    this.channelSecret = channelSecret ?? process.env.LINE_CHANNEL_SECRET ?? "";
+    this.liffId = liffId ?? process.env.LINE_LIFF_ID ?? "";
+  }
+
+  /**
+   * Whether a LINE channel secret is configured.
+   * When absent, signature verification is skipped (development convenience).
+   */
+  isSignatureVerificationEnabled(): boolean {
+    return this.channelSecret.length > 0;
+  }
+
+  /**
+   * Verifies the `X-Line-Signature` header against the raw webhook body.
+   */
+  verifySignature(rawBody: string, signature: string | null | undefined): boolean {
+    if (!this.isSignatureVerificationEnabled()) {
+      return true;
+    }
+    return verifyLineSignature(rawBody, signature, this.channelSecret);
   }
 
   /**
    * Constructs an empathetic LINE Flex Message containing a direct deep-link CTA.
    */
   createActionNudgeFlexMessage(task: TaskWithDerived): LineFlexMessage {
-    const deepLinkUrl = `nudge://focus?taskId=${task.id}`;
+    const deepLinkUrl = this.liffId
+      ? `https://liff.line.me/${this.liffId}?taskId=${task.id}`
+      : `nudge://focus?taskId=${task.id}`;
     const nudgeText = task.adaptiveNudgeMessage || "ลองเริ่ม 10 นาทีไหม?";
     const altText = `Nudge: ${task.title} — ${nudgeText}`;
 
@@ -133,6 +162,235 @@ export class LineService {
   }
 
   /**
+   * Constructs a Flex Message confirmation for newly created tasks via AI NLP.
+   */
+  createTaskCreatedFlexMessage(task: TaskWithDerived): LineFlexMessage {
+    const liffUrl = this.liffId
+      ? `https://liff.line.me/${this.liffId}?taskId=${task.id}`
+      : `nudge://focus?taskId=${task.id}`;
+    const deadlineText =
+      task.daysRemaining < 0
+        ? `เลยกำหนด ${Math.abs(task.daysRemaining)} วัน`
+        : task.daysRemaining === 0
+        ? "ครบกำหนดวันนี้"
+        : `เหลือ ${task.daysRemaining} วัน`;
+
+    const contents = {
+      type: "bubble",
+      size: "kilo",
+      header: {
+        type: "box",
+        layout: "vertical",
+        backgroundColor: "#10B981",
+        paddingAll: "16px",
+        contents: [
+          {
+            type: "text",
+            text: "✅ บันทึกงานสำเร็จแล้ว (AI Created)",
+            color: "#D1FAE5",
+            size: "xxs",
+            weight: "bold",
+          },
+          {
+            type: "text",
+            text: task.title,
+            color: "#FFFFFF",
+            size: "lg",
+            weight: "bold",
+            margin: "xs",
+            wrap: true,
+          },
+        ],
+      },
+      body: {
+        type: "box",
+        layout: "vertical",
+        paddingAll: "16px",
+        spacing: "md",
+        contents: [
+          {
+            type: "box",
+            layout: "horizontal",
+            contents: [
+              {
+                type: "text",
+                text: `📅 กำหนดส่ง: ${deadlineText}`,
+                color: "#475569",
+                size: "xs",
+                flex: 1,
+              },
+              {
+                type: "text",
+                text: `⭐ ความสำคัญ: ${task.importance}/5`,
+                color: "#475569",
+                size: "xs",
+                align: "end",
+              },
+            ],
+          },
+          {
+            type: "text",
+            text: `⏱️ เวลาที่คาดว่าจะใช้: ${task.estimatedMinutes} นาที`,
+            color: "#64748B",
+            size: "xs",
+          },
+        ],
+      },
+      footer: {
+        type: "box",
+        layout: "vertical",
+        paddingAll: "16px",
+        paddingTop: "0px",
+        spacing: "sm",
+        contents: [
+          {
+            type: "button",
+            style: "primary",
+            color: "#4F46E5",
+            height: "sm",
+            action: {
+              type: "uri",
+              label: "🌱 เริ่ม 10 นาทีใน LIFF",
+              uri: liffUrl,
+            },
+          },
+        ],
+      },
+    };
+
+    return {
+      type: "flex",
+      altText: `บันทึกงาน: ${task.title} สำเร็จแล้ว`,
+      contents,
+    };
+  }
+
+  /**
+   * Constructs a Flex Message summarizing the user's active tasks.
+   */
+  createTaskListFlexMessage(tasks: TaskWithDerived[]): LineFlexMessage {
+    const liffBaseUrl = this.liffId ? `https://liff.line.me/${this.liffId}` : `nudge://app`;
+
+    if (tasks.length === 0) {
+      return {
+        type: "flex",
+        altText: "รายการงานของคุณ",
+        contents: {
+          type: "bubble",
+          size: "kilo",
+          body: {
+            type: "box",
+            layout: "vertical",
+            paddingAll: "20px",
+            contents: [
+              {
+                type: "text",
+                text: "✨ ไม่มีงานค้างในระบบ",
+                weight: "bold",
+                size: "md",
+                color: "#0F172A",
+              },
+              {
+                type: "text",
+                text: "คุณจัดการงานทั้งหมดเรียบร้อยแล้ว หรือพิมพ์บอกงานใหม่เพื่อให้ Nudge ช่วยเตือนได้เลยครับ",
+                color: "#64748B",
+                size: "xs",
+                margin: "sm",
+                wrap: true,
+              },
+            ],
+          },
+        },
+      };
+    }
+
+    const taskItems = tasks.slice(0, 5).map((t) => ({
+      type: "box",
+      layout: "horizontal",
+      spacing: "md",
+      contents: [
+        {
+          type: "text",
+          text: t.title,
+          size: "sm",
+          color: "#1E293B",
+          weight: "bold",
+          flex: 3,
+          wrap: true,
+        },
+        {
+          type: "text",
+          text: t.daysRemaining < 0 ? `เลย ${Math.abs(t.daysRemaining)} วัน` : `${t.daysRemaining} วัน`,
+          size: "xs",
+          color: t.daysRemaining <= 1 ? "#EF4444" : "#64748B",
+          align: "end",
+          flex: 1,
+        },
+      ],
+    }));
+
+    const contents = {
+      type: "bubble",
+      size: "kilo",
+      header: {
+        type: "box",
+        layout: "vertical",
+        backgroundColor: "#4F46E5",
+        paddingAll: "16px",
+        contents: [
+          {
+            type: "text",
+            text: "📋 รายการงานของคุณ (NUDGE TASKS)",
+            color: "#C7D2FE",
+            size: "xxs",
+            weight: "bold",
+          },
+          {
+            type: "text",
+            text: `มีงานทั้งหมด ${tasks.length} รายการ`,
+            color: "#FFFFFF",
+            size: "md",
+            weight: "bold",
+            margin: "xs",
+          },
+        ],
+      },
+      body: {
+        type: "box",
+        layout: "vertical",
+        paddingAll: "16px",
+        spacing: "md",
+        contents: taskItems,
+      },
+      footer: {
+        type: "box",
+        layout: "vertical",
+        paddingAll: "16px",
+        paddingTop: "0px",
+        contents: [
+          {
+            type: "button",
+            style: "primary",
+            color: "#4F46E5",
+            height: "sm",
+            action: {
+              type: "uri",
+              label: "เปิดดูงานทั้งหมดใน LIFF",
+              uri: liffBaseUrl,
+            },
+          },
+        ],
+      },
+    };
+
+    return {
+      type: "flex",
+      altText: `รายการงานของคุณ (${tasks.length} รายการ)`,
+      contents,
+    };
+  }
+
+  /**
    * Sends an external action nudge to the user's linked LINE account.
    */
   async sendActionNudge(userId: number, taskId: number): Promise<LinePushResult> {
@@ -171,7 +429,7 @@ export class LineService {
 
     return {
       success: true,
-      messageId: `mock-msg-${Date.now()}`,
+      messageId: `msg-${Date.now()}`,
       recipientLineUserId: user.lineUserId,
       flexMessage,
     };
@@ -207,7 +465,7 @@ export class LineService {
 
   /**
    * Handles incoming LINE webhook events.
-   * Responds with user ID on follow or text query to streamline development and account linking.
+   * Leverages Gemini 2.5 Flash for natural language Thai task creation & intent routing.
    */
   async handleWebhookEvents(events: any[]): Promise<{ handledCount: number; repliesSent: number }> {
     let repliesSent = 0;
@@ -219,20 +477,66 @@ export class LineService {
       if (!replyToken || !lineUserId) continue;
 
       if (event.type === "follow") {
-        await this.replyMessage(replyToken, [
-          {
-            type: "text",
-            text: `🌱 ยินดีต้อนรับสู่ Nudge!\n\nLINE User ID ของคุณคือ:\n${lineUserId}\n\nคัดลอกรหัสนี้ไปกรอกในแอป Nudge (หน้า Task Detail -> เชื่อมต่อ LINE OA) เพื่อรับ Action Nudge ได้เลยครับ!`,
-          },
-        ]);
+        await this.userService.getOrCreateUserByLineUserId(lineUserId);
+        const liffBaseUrl = this.liffId ? `https://liff.line.me/${this.liffId}` : undefined;
+        const msg = liffBaseUrl
+          ? `🌱 ยินดีต้อนรับสู่ Nudge!\n\nเปิดแอป Nudge ผ่าน LINE ได้ที่นี่: ${liffBaseUrl}\nหรือพิมพ์บอกงาน เช่น 'พรุ่งนี้ 10 โมงมีสอบ' ได้ทันทีครับ`
+          : `🌱 ยินดีต้อนรับสู่ Nudge!\n\nLINE User ID ของคุณคือ:\n${lineUserId}\n\nพิมพ์บอกงานในแชทนี้เพื่อให้ Nudge ช่วยเตือนได้เลยครับ!`;
+
+        await this.replyMessage(replyToken, [{ type: "text", text: msg }]);
         repliesSent++;
       } else if (event.type === "message" && event.message?.type === "text") {
-        const text = (event.message.text || "").trim().toLowerCase();
-        if (text === "id" || text === "userid" || text === "uid" || text === "เชื่อมต่อ" || text === "ลิงก์") {
+        const text = (event.message.text || "").trim();
+        const user = await this.userService.getOrCreateUserByLineUserId(lineUserId);
+
+        const intentResult = await this.geminiService.parseTaskIntent(text);
+
+        if (intentResult.intent === "CREATE_TASK") {
+          const newTask = await this.taskService.createTask(user.id, {
+            title: intentResult.title || text,
+            deadline: intentResult.deadline || new Date(Date.now() + 86400000).toISOString(),
+            importance: intentResult.importance || 3,
+            estimatedMinutes: intentResult.estimatedMinutes || 30,
+          });
+
+          const flex = this.createTaskCreatedFlexMessage(newTask);
+          await this.replyMessage(replyToken, [flex]);
+          repliesSent++;
+        } else if (intentResult.intent === "VIEW_TASKS") {
+          const tasks = await this.taskService.getUserTasks(user.id);
+          const activeTasks = tasks.filter((t) => t.status !== "COMPLETED");
+          const flex = this.createTaskListFlexMessage(activeTasks);
+          await this.replyMessage(replyToken, [flex]);
+          repliesSent++;
+        } else if (intentResult.intent === "GET_RECOMMENDATION") {
+          const rec = await this.taskService.getRecommendedTask(user.id);
+          if (rec) {
+            const flex = this.createActionNudgeFlexMessage(rec);
+            await this.replyMessage(replyToken, [flex]);
+          } else {
+            await this.replyMessage(replyToken, [
+              {
+                type: "text",
+                text: "🎉 ยอดเยี่ยมมากครับ! ตอนนี้คุณไม่มีงานค้างเลย พักผ่อนให้สบายใจ หรือพิมพ์บอกงานใหม่ได้เสมอนะครับ",
+              },
+            ]);
+          }
+          repliesSent++;
+        } else if (intentResult.intent === "GET_ID") {
           await this.replyMessage(replyToken, [
             {
               type: "text",
               text: `🆔 LINE User ID ของคุณคือ:\n${lineUserId}`,
+            },
+          ]);
+          repliesSent++;
+        } else {
+          await this.replyMessage(replyToken, [
+            {
+              type: "text",
+              text:
+                intentResult.replyMessage ||
+                `สวัสดีครับ! สามารถพิมพ์บอกงาน เช่น "พรุ่งนี้ส่งโปรเจกต์" หรือพิมพ์ "งานวันนี้" เพื่อดูงานได้เลยครับ 🌱`,
             },
           ]);
           repliesSent++;
@@ -245,3 +549,4 @@ export class LineService {
 }
 
 export const lineService = new LineService();
+

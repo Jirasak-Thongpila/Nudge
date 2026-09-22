@@ -15,6 +15,32 @@ export const lineRoutes = (options?: LineRouteOptions) => {
   return new Elysia({ prefix: "/line" })
     .use(authPlugin(options))
     .post(
+      "/auth",
+      async ({ body, set }) => {
+        try {
+          const user = await uSvc.getOrCreateUserByLineUserId(body.lineUserId.trim(), body.deviceUuid);
+          return {
+            success: true,
+            data: user,
+          };
+        } catch (error: any) {
+          set.status = 400;
+          return {
+            success: false,
+            error: error?.message || "Failed to authenticate with LINE",
+          };
+        }
+      },
+      {
+        body: t.Object({
+          lineUserId: t.String({ minLength: 1 }),
+          deviceUuid: t.Optional(t.String()),
+          displayName: t.Optional(t.String()),
+          pictureUrl: t.Optional(t.String()),
+        }),
+      }
+    )
+    .post(
       "/link",
       async ({ currentUser, body, set }) => {
         try {
@@ -79,8 +105,32 @@ export const lineRoutes = (options?: LineRouteOptions) => {
     )
     .post(
       "/webhook",
-      async ({ body }) => {
-        const events = (body as any)?.events ?? [];
+      async ({ body, headers, set }) => {
+        // The raw body is preserved by the local `parse` hook below so the
+        // HMAC-SHA256 signature can be validated against the exact bytes LINE sent.
+        const rawBody = typeof body === "string" ? body : "";
+        const signature = headers["x-line-signature"];
+
+        if (!lSvc.verifySignature(rawBody, signature)) {
+          set.status = 401;
+          return {
+            success: false,
+            error: "Invalid or missing X-Line-Signature",
+          };
+        }
+
+        let payload: any = {};
+        try {
+          payload = rawBody ? JSON.parse(rawBody) : {};
+        } catch {
+          set.status = 400;
+          return {
+            success: false,
+            error: "Invalid JSON payload",
+          };
+        }
+
+        const events = payload?.events ?? [];
         const result = await lSvc.handleWebhookEvents(events);
         return {
           status: "ok",
@@ -88,10 +138,11 @@ export const lineRoutes = (options?: LineRouteOptions) => {
         };
       },
       {
-        body: t.Object({
-          events: t.Array(t.Any()),
-          destination: t.Optional(t.String()),
-        }),
+        parse({ request, contentType }) {
+          if (contentType?.includes("application/json")) {
+            return request.text();
+          }
+        },
       }
     );
 };

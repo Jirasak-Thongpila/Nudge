@@ -12,26 +12,43 @@ export const authPlugin = (options?: AuthPluginOptions) => {
   return new Elysia({ name: "nudge-auth" })
     .derive({ as: "scoped" }, async ({ headers }) => {
       const deviceUuid = headers["x-device-uuid"];
-      if (!deviceUuid || typeof deviceUuid !== "string" || deviceUuid.trim() === "") {
+      const lineUserId = headers["x-line-user-id"];
+
+      const hasDeviceUuid = typeof deviceUuid === "string" && deviceUuid.trim() !== "";
+      const hasLineUserId = typeof lineUserId === "string" && lineUserId.trim() !== "";
+
+      if (!hasDeviceUuid && !hasLineUserId) {
         return {
           currentUser: null as User | null,
           deviceUuid: null as string | null,
+          lineUserId: null as string | null,
           authError: "missing_header",
         };
       }
 
       try {
-        const user = await svc.getOrCreateUser(deviceUuid.trim());
+        let user: User | null = null;
+        if (hasLineUserId) {
+          user = await svc.getOrCreateUserByLineUserId(
+            lineUserId!.trim(),
+            hasDeviceUuid ? deviceUuid!.trim() : undefined
+          );
+        } else if (hasDeviceUuid) {
+          user = await svc.getOrCreateUser(deviceUuid!.trim());
+        }
+
         return {
           currentUser: user as User | null,
-          deviceUuid: deviceUuid.trim(),
+          deviceUuid: hasDeviceUuid ? deviceUuid!.trim() : null,
+          lineUserId: hasLineUserId ? lineUserId!.trim() : null,
           authError: null as string | null,
         };
       } catch (err) {
-        console.error("[authPlugin] Error resolving user from device UUID:", err);
+        console.error("[authPlugin] Error resolving user:", err);
         return {
           currentUser: null as User | null,
-          deviceUuid: deviceUuid.trim(),
+          deviceUuid: hasDeviceUuid ? deviceUuid!.trim() : null,
+          lineUserId: hasLineUserId ? lineUserId!.trim() : null,
           authError: err instanceof Error ? err.message : String(err),
         };
       }
@@ -52,7 +69,7 @@ export const authPlugin = (options?: AuthPluginOptions) => {
               set.status = 401;
               return {
                 success: false,
-                error: "Authentication required: missing or invalid x-device-uuid header",
+                error: "Authentication required: missing or invalid x-device-uuid or x-line-user-id header",
               };
             }
           },

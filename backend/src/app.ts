@@ -14,7 +14,7 @@ export const createApp = (options?: AppOptions) =>
       cors({
         origin: "*",
         methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "x-device-uuid", "Authorization"],
+        allowedHeaders: ["Content-Type", "x-device-uuid", "x-line-user-id", "Authorization"],
       })
     )
     .get("/health", () => ({
