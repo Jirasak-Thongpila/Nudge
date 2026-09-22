@@ -37,7 +37,7 @@ class LiffService {
       return false;
     }
 
-    final targetLiffId = liffId ?? '2009282547-XXXXXX'; // Fallback or dynamic LIFF ID
+    final targetLiffId = liffId ?? '2011693149-NldwbAUx'; // Fallback to production LIFF ID
 
     try {
       final liff = FlutterLineLiff.instance;
@@ -95,6 +95,21 @@ class LiffService {
         liff.login();
       }
     }
+  }
+
+  /// Logs out of LINE LIFF session if on Web platform.
+  void logout() {
+    if (kIsWeb && _isLiffSupported) {
+      try {
+        final liff = FlutterLineLiff.instance;
+        if (liff.isLoggedIn) {
+          liff.logout();
+        }
+      } catch (e) {
+        debugPrint('Error logging out of LIFF: $e');
+      }
+    }
+    _profile = null;
   }
 
   /// Closes the LIFF browser window inside LINE.
