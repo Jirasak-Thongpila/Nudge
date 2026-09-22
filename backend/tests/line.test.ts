@@ -226,5 +226,46 @@ describe("LINE OA Messaging & Deep Link (Ticket 09)", () => {
       expect(body.status).toBe("ok");
       expect(body.handledCount).toBe(1);
     });
+
+    it("should process follow and message events with reply tokens", async () => {
+      let replyCalled = false;
+      lineService.replyMessage = async (token, msgs) => {
+        replyCalled = true;
+        expect(token).toBe("reply-token-123");
+        expect(msgs[0].text).toContain("Uuser999");
+        return true;
+      };
+
+      const res = await app.handle(
+        new Request("http://localhost/line/webhook", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            destination: "Ubot123",
+            events: [
+              {
+                type: "follow",
+                replyToken: "reply-token-123",
+                source: { userId: "Uuser999" },
+                timestamp: Date.now(),
+              },
+              {
+                type: "message",
+                replyToken: "reply-token-123",
+                source: { userId: "Uuser999" },
+                message: { type: "text", text: "id" },
+                timestamp: Date.now(),
+              },
+            ],
+          }),
+        })
+      );
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(body.handledCount).toBe(2);
+      expect(body.repliesSent).toBe(2);
+      expect(replyCalled).toBe(true);
+    });
   });
 });

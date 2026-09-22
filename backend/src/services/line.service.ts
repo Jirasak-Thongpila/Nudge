@@ -178,19 +178,69 @@ export class LineService {
   }
 
   /**
-   * Handles incoming LINE webhook events.
+   * Sends a reply message to LINE via the replyToken.
    */
-  async handleWebhookEvents(events: any[]): Promise<{ handledCount: number }> {
+  async replyMessage(replyToken: string, messages: any[]): Promise<boolean> {
+    if (!this.channelAccessToken) {
+      return false;
+    }
+
+    try {
+      const response = await fetch("https://api.line.me/v2/bot/message/reply", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.channelAccessToken}`,
+        },
+        body: JSON.stringify({
+          replyToken,
+          messages,
+        }),
+      });
+
+      return response.ok;
+    } catch (e) {
+      console.error("Failed to send LINE reply:", e);
+      return false;
+    }
+  }
+
+  /**
+   * Handles incoming LINE webhook events.
+   * Responds with user ID on follow or text query to streamline development and account linking.
+   */
+  async handleWebhookEvents(events: any[]): Promise<{ handledCount: number; repliesSent: number }> {
+    let repliesSent = 0;
+
     for (const event of events) {
-      // Event handling (follow, message, etc.)
+      const lineUserId = event.source?.userId;
+      const replyToken = event.replyToken;
+
+      if (!replyToken || !lineUserId) continue;
+
       if (event.type === "follow") {
-        // Welcome new user follower
+        await this.replyMessage(replyToken, [
+          {
+            type: "text",
+            text: `🌱 ยินดีต้อนรับสู่ Nudge!\n\nLINE User ID ของคุณคือ:\n${lineUserId}\n\nคัดลอกรหัสนี้ไปกรอกในแอป Nudge (หน้า Task Detail -> เชื่อมต่อ LINE OA) เพื่อรับ Action Nudge ได้เลยครับ!`,
+          },
+        ]);
+        repliesSent++;
       } else if (event.type === "message" && event.message?.type === "text") {
-        // Chatbot interaction or deep link request
+        const text = (event.message.text || "").trim().toLowerCase();
+        if (text === "id" || text === "userid" || text === "uid" || text === "เชื่อมต่อ" || text === "ลิงก์") {
+          await this.replyMessage(replyToken, [
+            {
+              type: "text",
+              text: `🆔 LINE User ID ของคุณคือ:\n${lineUserId}`,
+            },
+          ]);
+          repliesSent++;
+        }
       }
     }
 
-    return { handledCount: events.length };
+    return { handledCount: events.length, repliesSent };
   }
 }
 
