@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch src/index.ts",
-    "build": "bun build src/index.ts --target node --outfile api/index.js",
+    "build": "bun build src/index.ts --target node --minify --outfile api/index.js",
     "start": "bun src/index.ts",
     "start:prod": "drizzle-kit push && bun src/index.ts",
     "nudge:dispatch": "bun src/scripts/dispatch-nudges.ts",
