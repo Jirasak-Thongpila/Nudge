@@ -1,3 +1,5 @@
+import { getRandomRotatedNudge } from "../lib/nudge";
+
 export type TaskIntentType =
   | "CREATE_TASK"
   | "VIEW_TASKS"
@@ -761,6 +763,69 @@ Rules:
         replyMessage: "ขออภัยครับ ไม่สามารถถอดความเสียงได้ในขณะนี้ กรุณาลองใหม่อีกครั้งนะครับ",
       };
     }
+  }
+
+  /**
+   * Generates a fresh, non-repetitive Thai action nudge tailored to the task and context.
+   * Adheres strictly to the warm accountability buddy persona and zero-shaming principles.
+   */
+  async generateDynamicNudge(
+    task: { title: string; postponeCount: number; deadline: Date; importance: number },
+    timeOfDay: "morning" | "afternoon" | "evening" = "afternoon"
+  ): Promise<string> {
+    if (!this.apiKey) {
+      return getRandomRotatedNudge(task.title, task.postponeCount, timeOfDay);
+    }
+
+    const prompt = `You are Nudge, an empathetic and supportive Thai productivity buddy (เพื่อนคู่คิด).
+Write a fresh, natural Thai nudge message (1-2 short sentences) inviting the user to start working on: "${task.title}" for just 10 minutes.
+
+Context:
+- Task: "${task.title}"
+- Importance rating: ${task.importance}/5
+- Times postponed so far: ${task.postponeCount}
+- Current time of day: ${timeOfDay}
+
+Rules:
+1. Warm, conversational Thai with polite ending particle (ครับ).
+2. ZERO GUILT / ZERO SHAMING: Never judge, scold, pressure, or ask why they haven't done it.
+3. Suggest a tiny, low-friction micro-step (open the file, sketch an outline, just 10 mins).
+4. Integrate the task name naturally. Max 1-2 emojis.
+Output strictly JSON: { "nudgeMessage": "..." }`;
+
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: "object",
+                properties: { nudgeMessage: { type: "string" } },
+                required: ["nudgeMessage"],
+              },
+            },
+          }),
+        }
+      );
+
+      if (response.ok) {
+        const data = (await response.json()) as any;
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          const parsed = JSON.parse(text);
+          if (parsed.nudgeMessage) return parsed.nudgeMessage;
+        }
+      }
+    } catch (err) {
+      console.error("Gemini dynamic nudge generation error:", err);
+    }
+
+    return getRandomRotatedNudge(task.title, task.postponeCount, timeOfDay);
   }
 }
 

@@ -193,3 +193,19 @@ export function selectDailyNudge(
     nudgeMessage: getAdaptiveNudgeMessage(chosen.postponeCount),
   };
 }
+
+export const FALLBACK_NUDGE_TEMPLATES: Array<(title: string) => string> = [
+  (title: string) => `เช้านี้ลองเปิดดู ${title} สัก 10 นาทีไหมครับ สบายๆ เริ่มก้าวแรกกันนะ`,
+  (title: string) => `บ่ายนี้แวบมาเริ่ม ${title} สักยก 10 นาทีดีไหมครับ เผื่อสมองแล่นลุยต่อได้`,
+  (title: string) => `ก่อนพักผ่อนเย็นนี้ มาลองเคาะ ${title} ก้าวแรก 10 นาที จะได้สบายใจขึ้นครับ`,
+  (title: string) => `งาน ${title} ก้อนนี้อาจจะดูเยอะ ลองวางโครงสั้นๆ 10 นาทีพอนะครับ`,
+  (title: string) => `ไม่ต้องกดดันตัวเองเรื่องที่ผ่านมาครับ แค่เริ่มใหม่กับ ${title} ตอนนี้สัก 10 นาที ลุยไปด้วยกันนะ`,
+  (title: string) => `แค่เปิดไฟล์ ${title} ทิ้งไว้สัก 10 นาทีก็ถือว่าได้เริ่มแล้วครับ สู้ๆ นะ`,
+];
+
+let lastFallbackIndex = -1;
+export function getRandomRotatedNudge(title: string, _postponeCount: number = 0, _timeOfDay: string = "afternoon"): string {
+  const nextIndex = (lastFallbackIndex + 1) % FALLBACK_NUDGE_TEMPLATES.length;
+  lastFallbackIndex = nextIndex;
+  return FALLBACK_NUDGE_TEMPLATES[nextIndex](title);
+}
