@@ -27,6 +27,8 @@ class MockUserService extends UserService {
         id: this.nextId++,
         deviceUuid: trimmed,
         lineUserId: null,
+        timezone: "Asia/Bangkok",
+        lastNudgeAt: null,
         createdAt: new Date(),
       };
       this.store.push(existing);
@@ -49,6 +51,8 @@ class MockTaskService extends TaskService {
       estimatedMinutes: input.estimatedMinutes,
       status: "NOT_STARTED",
       postponeCount: 0,
+      lastNudgedAt: null,
+      nudgeCount: 0,
       createdAt: new Date(),
       deletedAt: null,
     };

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, isNotNull } from "drizzle-orm";
 import { users, type User } from "../db/schema";
 import { db as defaultDb, type Database } from "../db";
 
@@ -90,6 +90,31 @@ export class UserService {
       .returning();
 
     return newUser;
+  }
+
+  /**
+   * Every user who can receive an Action Nudge outside the app.
+   */
+  async listLineLinkedUsers(): Promise<User[]> {
+    return this.db.select().from(users).where(isNotNull(users.lineUserId));
+  }
+
+  async updateTimezone(userId: number, timezone: string): Promise<User | null> {
+    const [updated] = await this.db
+      .update(users)
+      .set({ timezone: timezone.trim() || "Asia/Bangkok" })
+      .where(eq(users.id, userId))
+      .returning();
+
+    return updated ?? null;
+  }
+
+  /**
+   * Records that this user received an Action Nudge, which caps delivery to one
+   * per local day.
+   */
+  async markNudgeSent(userId: number, at: Date = new Date()): Promise<void> {
+    await this.db.update(users).set({ lastNudgeAt: at }).where(eq(users.id, userId));
   }
 
   async linkLineUserId(userId: number, lineUserId: string): Promise<User | null> {

@@ -1,6 +1,9 @@
 export type TaskIntentType =
   | "CREATE_TASK"
   | "VIEW_TASKS"
+  | "COMPLETE_TASK"
+  | "POSTPONE_TASK"
+  | "DELETE_TASK"
   | "GET_RECOMMENDATION"
   | "GET_ID"
   | "HELP"
@@ -12,8 +15,62 @@ export interface TaskIntentResult {
   deadline?: string; // ISO-8601 string
   importance?: number; // 1 to 5
   estimatedMinutes?: number; // e.g. 15, 30, 45, 60
+  /** Name the user used to point at an existing task ("ลบงานอ่านหนังสือ" -> "อ่านหนังสือ"). */
+  taskQuery?: string;
+  /** Exact task id the user pointed at, e.g. from "ลบงาน #12". */
+  taskId?: number;
+  /** True only when the user explicitly confirmed a destructive action. */
+  confirmed?: boolean;
   replyMessage?: string;
 }
+
+/** Questions are never treated as an instruction to complete or delete a task. */
+const CANCEL_MESSAGE = "รับทราบครับ ยกเลิกแล้ว ไม่มีการเปลี่ยนแปลงใด ๆ นะครับ 🌱";
+
+//
+// Spam guard signals. All of these run against a normalized message (no spaces,
+// no polite particles) so they match the way people actually type in chat.
+//
+
+/** Words that hint the message is about something to do. */
+export const TASK_KEYWORD_PATTERN =
+  /(ส่ง|ทำ|สอบ|การบ้าน|โปรเจ|โครงงาน|งาน|รายงาน|อ่านหนังสือ|นัด|ประชุม|มีตติ้ง|มีทติ้ง|สัมมนา|สมินา|อบรม|ติว|เรียน|นำเสนอ|เตือน|present|meeting|exam|assignment|submit|project)/;
+
+/** A date/time/duration the user mentioned — strong evidence of a real request. */
+const TASK_TIME_CUE =
+  /(วันนี้|พรุ่งนี้|มะรืน|วัน(จันทร์|อังคาร|พุธ|พฤหัส|ศุกร์|เสาร์|อาทิตย์)|\d{1,2}(โมง|ทุ่ม)|เที่ยง|บ่าย|\d{1,2}[:.]\d{2}|\d{1,2}\/\d{1,2}|นาที|ชั่วโมง|สัปดาห์|อาทิตย์หน้า|เดือนหน้า|สิ้นเดือน|ต้นเดือน|deadline|due)/;
+
+/** The user asked Nudge to remind them. */
+const TASK_REMINDER_CUE = /(เตือน|อย่าลืม|ไม่ลืม|remember|remind)/;
+
+/** An action verb the user plans to do. */
+const TASK_ACTION_CUE =
+  /(ส่ง|ทำ|อ่าน|ทบทวน|ซ้อม|เตรียม|สอบ|ประชุม|นัด|มีตติ้ง|มีทติ้ง|เคลียร์|เขียน|จ่าย|โทร|ยื่น|นำเสนอ|อบรม|ติว|เรียน|ล้าง|ซื้อ|เก็บ|finish|submit|prepare|review|meeting|call|pay)/;
+
+/** Greetings, thanks, praise, jokes — not tasks. */
+const SMALL_TALK_PATTERN =
+  /(สวัสดี|หวัดดี|ขอบคุณ|ขอบใจ|ขอบคุน|thanks|thankyou|ยอดเยี่ยม|ดีมาก|เก่งมาก|สุดยอด|เยี่ยมเลย|บาย|goodnight|goodmorning|555|ฮ่า|haha|lol)/;
+
+/** Venting and complaints. A task may still hide inside one, see below. */
+const COMPLAINT_PATTERN =
+  /(เหนื่อย|เพลีย|ท้อ|ไม่มีแรง|ขี้เกียจ|ไม่อยาก|ทรมาน|เครียด|ปวดหัว|ร้องไห้|เยอะจัง|งานเยอะ|ล้นมือ|ไม่มีเวลา|โหด|burnout)/;
+
+/** Status updates about work that is already finished. */
+const DONE_REPORT_PATTERN = /(เสร็จแล้ว|เรียบร้อย|เสร็จหมด|ทำแล้ว|ส่งแล้ว|จ่ายแล้ว|ไปแล้ว|done|finished)/;
+
+/** Question words — the user is asking something, not asking us to save a task. */
+const QUESTION_PATTERN =
+  /(\?|？|ไหม|มั้ย|มั๊ย|หรือเปล่า|รึเปล่า|หรือไม่|หรือยัง|รึยัง|เหรอ|หรอ|ทำไม|อะไร|ยังไง|เป็นไง|ที่ไหน|เมื่อไหร่|เมื่อไร|ใคร|เท่าไหร่|เท่าไร|กี่|บ้าง)/;
+
+/** Ways of saying "I finished it". */
+const COMPLETE_COMMAND_PATTERN =
+  /(เสร็จแล้ว|เสร็จเรียบร้อย|ทำเสร็จ|ปิดงาน|จบงาน|งานเสร็จ|เสร็จหมด|เรียบร้อยแล้ว|done|finished|completed?)/g;
+
+/** Reply used when a message is about a task but too vague to save automatically. */
+export const CLARIFY_TASK_MESSAGE =
+  "🤔 ยังไม่แน่ใจว่าเป็นงานที่ต้องบันทึกหรือเปล่าครับ\n" +
+  "ลองพิมพ์ให้มีวัน/เวลา เช่น 'พรุ่งนี้ 9 โมงส่งรายงาน 3 ดาว' แล้ว Nudge จะบันทึกให้ทันทีครับ\n" +
+  "หรือพิมพ์ 'งานทั้งหมด' เพื่อดูรายการงานที่บันทึกไว้ก็ได้ครับ";
 
 export class GeminiService {
   private apiKey: string;
@@ -25,53 +82,231 @@ export class GeminiService {
   }
 
   /**
+   * Normalizes a message so intent matching survives the way people actually type:
+   * invisible characters, stray spaces, polite particles ("ค่ะ", "ครับ") and the
+   * common misspellings of "ทั้งหมด". Only used for intent detection, never for titles.
+   */
+  normalizeMessage(text: string): string {
+    let normalized = text
+      .replace(/[\u200B-\u200D\u2060\uFEFF]/g, "")
+      .replace(/[\u00A0\u2007\u202F]/g, " ")
+      .toLowerCase()
+      .replace(/ทั้?งห?มด/g, "ทั้งหมด")
+      .replace(/\s+/g, "");
+
+    let previous = "";
+    while (normalized !== previous) {
+      previous = normalized;
+      normalized = normalized
+        .replace(/(ครับ|ค่ะ|คะ|คับ|จ้า|จ๊ะ|ค่า|นะ|ด้วย|หน่อย|ที)$/, "")
+        .replace(/(ของ)?(ฉัน|ผม|เรา|กู|หนู)$/, "");
+    }
+
+    return normalized;
+  }
+
+  private isIdIntent(normalized: string): boolean {
+    return ["id", "uid", "userid", "lineid", "ไลน์ไอดี", "ไอดี", "ขอไอดี"].includes(normalized);
+  }
+
+  private isViewIntent(normalized: string): boolean {
+    const core = normalized
+      .replace(/^(ขอดู|ดู|ขอ|เช็ค|เช็ก|แสดง|เปิดดู|โชว์|บอก|สรุป)/, "")
+      .replace(/(มี)?อะไร(บ้าง)?$|เป็นไง(บ้าง)?$|เป็นยังไง(บ้าง)?$|มีไร(บ้าง)?$/, "");
+
+    return [
+      "งาน",
+      "งานวันนี้",
+      "งานทั้งหมด",
+      "งานค้าง",
+      "งานที่ต้องทำ",
+      "งานอะไร",
+      "มีงาน",
+      "มีงานอะไร",
+      "รายการ",
+      "รายการงาน",
+      "ตารางงาน",
+      "tasks",
+      "task",
+      "alltasks",
+      "list",
+      "todo",
+      "mytasks",
+    ].includes(core);
+  }
+
+  private isRecommendationIntent(normalized: string): boolean {
+    return (
+      normalized.includes("แนะนำ") ||
+      ["nudge", "focus", "เริ่ม", "ทำอะไรดี", "เริ่มงานไหนดี", "ทำอะไรก่อนดี", "งานไหนก่อน"].includes(
+        normalized
+      )
+    );
+  }
+
+  private isHelpIntent(normalized: string): boolean {
+    return ["help", "helpme", "ช่วยเหลือ", "วิธีใช้", "วิธีใช้งาน", "ใช้งานยังไง", "คำสั่ง", "ทำอะไรได้บ้าง"].includes(
+      normalized
+    );
+  }
+
+  /**
+   * Recognizes chat commands that act on an existing task: completing it
+   * ("ทำการบ้านเสร็จแล้ว") or deleting it ("ลบงานอ่านหนังสือ", "ยืนยันลบ #12").
+   * Returns null when the message is not such a command.
+   */
+  parseTaskLifecycleIntent(text: string): TaskIntentResult | null {
+    const normalized = this.normalizeMessage(text);
+    if (!normalized) {
+      return null;
+    }
+
+    // Confirmation of a delete prompt, typed or tapped from the quick reply
+    const confirmDelete = normalized.match(/^(ยืนยันลบ|ยืนยันการลบ|ลบเลย|ยืนยัน)(งาน)?#?(\d+)$/);
+    if (confirmDelete) {
+      return { intent: "DELETE_TASK", taskId: parseInt(confirmDelete[3], 10), confirmed: true };
+    }
+
+    if (["ยกเลิก", "cancel", "ไม่ลบ", "ไม่ต้องลบ"].includes(normalized)) {
+      return { intent: "UNKNOWN", replyMessage: CANCEL_MESSAGE };
+    }
+
+    // "ทำงานเสร็จหรือยัง" is a question, not an instruction
+    if (QUESTION_PATTERN.test(normalized)) {
+      return null;
+    }
+
+    // Delete must be phrased as a command at the start, otherwise a real task
+    // such as "พรุ่งนี้ลบไฟล์ชั่วคราว" would be swallowed.
+    const deleteMatch = normalized.match(/^(ลบงานทิ้ง|ลบงาน|ยกเลิกงาน|เอาออกงาน|ลบ|delete|remove)(.*)$/);
+    if (deleteMatch) {
+      const rest = this.cleanTaskQuery(deleteMatch[2]);
+      const taskId = this.parseTaskId(rest);
+      return taskId ? { intent: "DELETE_TASK", taskId } : { intent: "DELETE_TASK", taskQuery: rest };
+    }
+
+    // "เลื่อนไปก่อน" is the explicit postpone action: a deliberate choice, which the
+    // avoidance detection counts (unlike a passed deadline).
+    const postponeMatch = normalized.match(/^(เลื่อนงาน|ขอเลื่อนงาน|เลื่อน|ขอเลื่อน|postpone|snooze)(.*)$/);
+    if (postponeMatch) {
+      const rest = this.cleanTaskQuery(postponeMatch[2]);
+      const taskId = this.parseTaskId(rest);
+      if (taskId) {
+        return { intent: "POSTPONE_TASK", taskId };
+      }
+
+      return { intent: "POSTPONE_TASK", taskQuery: rest.replace(/(ไปก่อน|ออกไป|ก่อน|หน่อย|เลย|ที)/g, "") };
+    }
+
+    if (normalized.match(COMPLETE_COMMAND_PATTERN)) {
+      // Strip every command word, then any leftover "แล้ว":
+      // "อ่านหนังสือสอบเสร็จแล้ว" -> "อ่านหนังสือสอบ", "ทำงานเสร็จแล้ว" -> "ทำ"
+      const query = this.cleanTaskQuery(normalized.replace(COMPLETE_COMMAND_PATTERN, " ").replace(/แล้ว/g, " "));
+      const taskId = this.parseTaskId(query);
+      return taskId ? { intent: "COMPLETE_TASK", taskId } : { intent: "COMPLETE_TASK", taskQuery: query };
+    }
+
+    return null;
+  }
+
+  private cleanTaskQuery(query: string): string {
+    return query.replace(/[\s"'“”]/g, "");
+  }
+
+  /**
+   * Task references by number ("ลบงาน #12", "ปิดงาน 12") let a user pick one task
+   * out of several with the same name.
+   */
+  private parseTaskId(query: string): number | undefined {
+    const digits = query.replace(/^#/, "");
+    return /^\d{1,9}$/.test(digits) ? parseInt(digits, 10) : undefined;
+  }
+
+  /**
+   * Whether a message actually asks Nudge to track something, rather than being
+   * small talk, a question, a complaint or a "finished it already" status report.
+   * The fast parser only stores tasks that pass this gate.
+   */
+  looksLikeTaskRequest(text: string): boolean {
+    const normalized = this.normalizeMessage(text);
+    if (!normalized || !TASK_KEYWORD_PATTERN.test(normalized)) {
+      return false;
+    }
+
+    if (this.isHardSpamSignal(normalized)) {
+      return false;
+    }
+
+    // A date, a time or an explicit "remind me" is enough on its own.
+    if (TASK_TIME_CUE.test(normalized) || TASK_REMINDER_CUE.test(normalized)) {
+      return true;
+    }
+
+    // Otherwise we need an action to do, with no venting around it.
+    if (SMALL_TALK_PATTERN.test(normalized) || COMPLAINT_PATTERN.test(normalized)) {
+      return false;
+    }
+
+    return TASK_ACTION_CUE.test(normalized);
+  }
+
+  /**
+   * Whether a message has no business being stored as a task at all. Used to veto
+   * an over-eager CREATE_TASK decision coming back from Gemini.
+   */
+  isClearlyNotTaskRequest(text: string): boolean {
+    const normalized = this.normalizeMessage(text);
+    if (!normalized) {
+      return true;
+    }
+
+    if (this.isHardSpamSignal(normalized)) {
+      return true;
+    }
+
+    if (SMALL_TALK_PATTERN.test(normalized) || COMPLAINT_PATTERN.test(normalized)) {
+      // Venting that still names a deadline is a real task:
+      // "เหนื่อยจัง แต่พรุ่งนี้ต้องส่งงาน"
+      return !(TASK_TIME_CUE.test(normalized) || TASK_REMINDER_CUE.test(normalized));
+    }
+
+    return false;
+  }
+
+  private isHardSpamSignal(normalized: string): boolean {
+    return QUESTION_PATTERN.test(normalized) || DONE_REPORT_PATTERN.test(normalized);
+  }
+
+  /**
    * Parses natural language Thai user messages into structured task actions or intents using Gemini API.
    */
   async parseTaskIntent(message: string, now: Date = new Date()): Promise<TaskIntentResult> {
-    const trimmed = message.trim();
-    if (!trimmed) {
+    const raw = message.trim();
+    if (!raw) {
       return { intent: "UNKNOWN", replyMessage: "กรุณาระบุข้อความที่ต้องการให้ Nudge ช่วยเหลือครับ" };
     }
 
-    // Quick regex fast-path for common single keywords
-    const lower = trimmed.toLowerCase();
-    if (lower === "id" || lower === "uid" || lower === "userid" || lower === "ไอดี" || lower === "ขอไอดี") {
+    // "ยืนยันบันทึกงาน <ข้อความเดิม>" comes from the duplicate warning quick reply:
+    // the user chose to save a second copy anyway.
+    const saveConfirmation = this.stripSaveConfirmation(raw);
+    const confirmed = saveConfirmation.confirmed;
+    const trimmed = saveConfirmation.text || raw;
+
+    // Quick regex fast-path for common single keywords. Matching runs on a
+    // normalized form so that "งานทั้งหมดค่ะ", "งาน ทังหมด" and "\u200Bงานทั้งหมด"
+    // are recognized as the same command instead of falling through to task creation.
+    const normalized = this.normalizeMessage(trimmed);
+
+    if (this.isIdIntent(normalized)) {
       return { intent: "GET_ID" };
     }
-    if (
-      lower === "งาน" ||
-      lower === "งานวันนี้" ||
-      lower === "งานทั้งหมด" ||
-      lower === "ดูงาน" ||
-      lower === "ดูงานทั้งหมด" ||
-      lower === "รายการงาน" ||
-      lower === "งานค้าง" ||
-      lower === "มีงานอะไรบ้าง" ||
-      lower === "งานที่ต้องทำ" ||
-      lower === "เช็คงาน" ||
-      lower === "tasks" ||
-      lower === "task" ||
-      lower === "all tasks" ||
-      lower === "list" ||
-      lower === "todo" ||
-      lower.startsWith("ดูงาน") ||
-      lower.startsWith("ขอดูงาน") ||
-      lower.startsWith("รายการ")
-    ) {
+    if (this.isViewIntent(normalized)) {
       return { intent: "VIEW_TASKS" };
     }
-    if (
-      lower === "แนะนำ" ||
-      lower === "nudge" ||
-      lower === "focus" ||
-      lower === "เริ่ม" ||
-      lower === "ทำอะไรดี" ||
-      lower === "เริ่มงานไหนดี" ||
-      lower.includes("แนะนำ")
-    ) {
+    if (this.isRecommendationIntent(normalized)) {
       return { intent: "GET_RECOMMENDATION" };
     }
-    if (lower === "help" || lower === "ช่วยเหลือ" || lower === "วิธีใช้" || lower === "คำสั่ง" || lower === "ทำอะไรได้บ้าง") {
+    if (this.isHelpIntent(normalized)) {
       return {
         intent: "HELP",
         replyMessage:
@@ -79,14 +314,23 @@ export class GeminiService {
           "• พิมพ์บอกงาน เช่น 'พรุ่งนี้ 9 โมงส่งมินิโปรเจกต์ สำคัญมาก'\n" +
           "• พิมพ์ 'งานทั้งหมด' เพื่อดูรายการงานทั้งหมด\n" +
           "• พิมพ์ 'แนะนำ' เพื่อดูงานที่ควรเริ่มทำ 10 นาทีแรก\n" +
+          "• พิมพ์ 'ทำการบ้านเสร็จแล้ว' เพื่อปิดงานที่ทำเสร็จ\n" +
+          "• พิมพ์ 'ลบงานอ่านหนังสือ' เพื่อลบงานที่ไม่ต้องการแล้ว\n" +
           "• พิมพ์ 'id' เพื่อดู LINE User ID ของคุณ",
       };
+    }
+
+    // "I finished it" / "delete this" commands are resolved before task creation,
+    // so "ทำงานเสร็จแล้ว" never becomes a brand new task.
+    const lifecycle = this.parseTaskLifecycleIntent(trimmed);
+    if (lifecycle) {
+      return lifecycle;
     }
 
     // Fast path: Ultra-fast Thai regex parser for instantaneous response (0ms)
     const fastParsed = this.fastParseThaiTask(trimmed, now);
     if (fastParsed) {
-      return fastParsed;
+      return this.withSaveConfirmation(fastParsed, confirmed);
     }
 
     // If Gemini API Key is not set, use heuristic fallback
@@ -101,13 +345,17 @@ The current date and time is: ${now.toISOString()} (Timezone: Asia/Bangkok, UTC+
 
 Rules:
 1. If the user wants to add or create a task (e.g. "พรุ่งนี้ส่งงาน...", "มีสอบวันศุกร์...", "ช่วยเตือนทำการบ้าน..."), set intent to "CREATE_TASK".
-   - Extract "title": clean task title.
+   - Extract "title": clean task title built only from words the user actually wrote. Never add an action verb or noun that is not in the message — for example, if the user says "มีมินิโปรเจกต์" do not return "ส่งมินิโปรเจกต์".
    - Extract "deadline": compute full ISO-8601 string based on the current time and user's requested time (default to 23:59:59 if only date is specified).
-   - Extract "importance": integer from 1 to 5 (default to 3 if unspecified; 5 if urgent/very important).
+   - Extract "importance": integer from 1 to 5. If the user typed an explicit rating such as "3 ดาว", "3/5", or "ระดับ 3", use that exact number — it overrides descriptive words like "สำคัญมาก"/"ด่วน". Otherwise default to 3 (5 if urgent/very important).
    - Extract "estimatedMinutes": estimated duration in minutes (default to 30 if unspecified).
 2. If the user asks to see their tasks or check what to do, set intent to "VIEW_TASKS".
 3. If the user asks for a recommendation or what to start now, set intent to "GET_RECOMMENDATION".
-4. If it's a general greeting or unrelated query, set intent to "UNKNOWN" and provide a helpful, friendly replyMessage in Thai.`;
+3.1. If the user says they finished something ("ทำการบ้านเสร็จแล้ว", "อ่านหนังสือจบแล้ว"), set intent to "COMPLETE_TASK" and put the name they used in "taskQuery".
+3.2. If the user wants to remove a task ("ลบงานอ่านหนังสือ", "ยกเลิกงานสอบ"), set intent to "DELETE_TASK" and put the name they used in "taskQuery".
+3.3. If the user says they are putting something off ("เลื่อนไปก่อน", "ขอเลื่อนอ่านหนังสือ"), set intent to "POSTPONE_TASK" and put the name they used in "taskQuery".
+4. If it's a general greeting or unrelated query, set intent to "UNKNOWN" and provide a helpful, friendly replyMessage in Thai.
+5. Never use "CREATE_TASK" for small talk, thanks, praise, complaints or venting ("งานเยอะจัง", "เหนื่อยมาก"), questions about a schedule, or messages saying something is already done. Use "UNKNOWN" with a short, empathetic replyMessage that invites the user to state a concrete task with a day or time.`;
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`,
@@ -130,12 +378,23 @@ Rules:
                 properties: {
                   intent: {
                     type: "string",
-                    enum: ["CREATE_TASK", "VIEW_TASKS", "GET_RECOMMENDATION", "GET_ID", "HELP", "UNKNOWN"],
+                    enum: [
+                      "CREATE_TASK",
+                      "VIEW_TASKS",
+                      "COMPLETE_TASK",
+                      "POSTPONE_TASK",
+                      "DELETE_TASK",
+                      "GET_RECOMMENDATION",
+                      "GET_ID",
+                      "HELP",
+                      "UNKNOWN",
+                    ],
                   },
                   title: { type: "string" },
                   deadline: { type: "string" },
                   importance: { type: "integer" },
                   estimatedMinutes: { type: "integer" },
+                  taskQuery: { type: "string" },
                   replyMessage: { type: "string" },
                 },
                 required: ["intent"],
@@ -157,7 +416,10 @@ Rules:
       }
 
       const parsed = JSON.parse(contentText) as TaskIntentResult;
-      return parsed;
+      if (parsed.intent === "CREATE_TASK" && !confirmed && this.isClearlyNotTaskRequest(trimmed)) {
+        return { intent: "UNKNOWN", replyMessage: CLARIFY_TASK_MESSAGE };
+      }
+      return this.withSaveConfirmation(parsed, confirmed);
     } catch (error) {
       console.error("Gemini parsing error:", error);
       return this.fallbackHeuristicParser(trimmed, now);
@@ -170,32 +432,34 @@ Rules:
   fastParseThaiTask(text: string, now: Date = new Date()): TaskIntentResult | null {
     const trimmed = text.trim();
 
-    const hasTaskKeyword =
-      trimmed.includes("ส่ง") ||
-      trimmed.includes("ทำ") ||
-      trimmed.includes("สอบ") ||
-      trimmed.includes("การบ้าน") ||
-      trimmed.includes("โปรเจกต์") ||
-      trimmed.includes("งาน") ||
-      trimmed.includes("อ่านหนังสือ") ||
-      trimmed.includes("นัด") ||
-      trimmed.includes("ประชุม") ||
-      trimmed.includes("เตือน");
+    // Tolerates common Thai spellings and typos ("โปรเจค" without the final ต์,
+    // "สมินา" for seminar) so real task messages are not silently dropped.
+    const hasTaskKeyword = TASK_KEYWORD_PATTERN.test(this.normalizeMessage(trimmed));
 
     if (!hasTaskKeyword) {
       return null;
     }
 
-    // 1. Extract Importance (1 to 5)
+    // Spam guard: never turn small talk, questions, complaints or "done already"
+    // status reports into tasks just because they mention the word "งาน".
+    if (!this.looksLikeTaskRequest(trimmed)) {
+      return null;
+    }
+
+    // 1. Extract Importance (1 to 5).
+    // A rating the user typed explicitly ("3 ดาว", "3/5") always wins over
+    // descriptive words, otherwise "สำคัญมาก" silently overwrites the number
+    // the user actually chose.
     let importance = 3;
-    if (/5\s*ดาว|5\/5|สำคัญมาก|ด่วนที่สุด|ด่วนมาก|urgent/i.test(trimmed)) {
+    const starMatch = trimmed.match(/([1-5])\s*(?:ดาว|\/\s*5)/);
+    if (starMatch) {
+      importance = parseInt(starMatch[1], 10);
+    } else if (/สำคัญมาก|ด่วนที่สุด|ด่วนมาก|urgent/i.test(trimmed)) {
       importance = 5;
-    } else if (/4\s*ดาว|4\/5|สำคัญ/i.test(trimmed)) {
-      importance = 4;
-    } else if (/1\s*ดาว|1\/5|ไม่ด่วน|ไม่สำคัญ/i.test(trimmed)) {
+    } else if (/ไม่ด่วน|ไม่สำคัญ/i.test(trimmed)) {
       importance = 1;
-    } else if (/2\s*ดาว|2\/5/i.test(trimmed)) {
-      importance = 2;
+    } else if (/สำคัญ/i.test(trimmed)) {
+      importance = 4;
     }
 
     // 2. Extract Estimated Minutes
@@ -251,7 +515,7 @@ Rules:
     let targetMinute = 59;
 
     const time12Match = trimmed.match(/(\d{1,2})[:.](\d{2})/);
-    const mongMatch = trimmed.match(/(\d{1,2})\s*โมง/);
+    const mongMatch = trimmed.match(/(\d{1,2})\s*โมง\s*(เช้า|เย็น|ค่ำ)?/);
     const toomMatch = trimmed.match(/(\d{1,2})\s*ทุ่ม/);
     const baiMatch = trimmed.match(/บ่าย\s*(\d{1,2})/);
 
@@ -266,7 +530,12 @@ Rules:
       targetMinute = 0;
     } else if (mongMatch) {
       const h = parseInt(mongMatch[1], 10);
-      targetHour = h <= 5 ? h + 12 : h;
+      const period = mongMatch[2];
+      if (period === "เย็น" || period === "ค่ำ") {
+        targetHour = h < 12 ? h + 12 : h;
+      } else {
+        targetHour = h <= 5 ? h + 12 : h;
+      }
       targetMinute = 0;
     } else if (trimmed.includes("เที่ยงคืน")) {
       targetHour = 23;
@@ -282,9 +551,17 @@ Rules:
     let title = trimmed
       .replace(/(วันนี้|พรุ่งนี้|มะรืนนี้|วันจันทร์|วันอังคาร|วันพุธ|วันพฤหัสบดี|วันพฤหัส|วันศุกร์|วันเสาร์|วันอาทิตย์)/g, "")
       .replace(/(\d{1,2}[:.]\d{2}\s*(น\.|น)?|\d{1,2}\s*โมง(เช้า|เย็น)?|\d{1,2}\s*ทุ่ม|บ่าย\s*\d{1,2}(\s*โมง)?|เที่ยงคืน|เที่ยง)/g, "")
-      .replace(/(\d+\s*ดาว|\d+\/5|สำคัญมาก|สำคัญ|ด่วนที่สุด|ด่วน|urgent)/g, "")
+      .replace(/(\d+\s*ดาว|\d+\s*\/\s*5|ไม่สำคัญ|ไม่ด่วน|สำคัญมาก|สำคัญ|ด่วนที่สุด|ด่วน|urgent)/g, "")
       .replace(/(\d+\s*(นาที|ชั่วโมง|ชม|min|mins|hr|hrs))/g, "")
       .trim();
+
+    const strippedTitle = title;
+
+    // Venting often wraps the real task ("เหนื่อยจัง แต่พรุ่งนี้ต้องส่งงาน"):
+    // keep the part the user actually asked for.
+    if (COMPLAINT_PATTERN.test(this.normalizeMessage(title)) && title.includes("แต่")) {
+      title = title.slice(title.lastIndexOf("แต่") + "แต่".length).trim();
+    }
 
     title = title
       .replace(/^(ช่วยเตือน|สร้างงาน|เพิ่มงาน)\s*/i, "")
@@ -294,14 +571,18 @@ Rules:
       .replace(/^ต้อง\s*/i, "")
       .trim();
 
+    // Fall back to the user's own words instead of inventing a title: recording a
+    // slightly noisy title beats recording one the user never said.
     if (!title || title.length < 2) {
-      if (trimmed.includes("โปรเจกต์")) title = "ส่งมินิโปรเจกต์";
-      else if (trimmed.includes("การบ้าน")) title = "ส่งการบ้าน";
-      else if (trimmed.includes("สอบ")) title = "เตรียมตัวสอบ";
-      else title = trimmed;
+      title = strippedTitle || trimmed;
     }
 
-    if (trimmed.includes("ส่ง") && !title.startsWith("ส่ง") && !title.startsWith("การบ้าน")) {
+    if (
+      trimmed.includes("ส่ง") &&
+      !title.startsWith("ส่ง") &&
+      !title.includes("ส่ง") &&
+      !title.startsWith("การบ้าน")
+    ) {
       title = `ส่ง${title}`;
     }
 
@@ -317,9 +598,31 @@ Rules:
   /**
    * Fallback rule-based parser when Gemini API is unavailable.
    */
+  /**
+   * Splits the "save it anyway" confirmation prefix off a message.
+   */
+  private stripSaveConfirmation(text: string): { text: string; confirmed: boolean } {
+    const match = text.match(/^(ยืนยันบันทึกงาน|ยืนยันบันทึก|ยืนยันสร้างงาน|ยืนยันสร้าง|บันทึกซ้ำ|สร้างซ้ำ)\s*/);
+    if (!match) {
+      return { text, confirmed: false };
+    }
+
+    return { text: text.slice(match[0].length).trim(), confirmed: true };
+  }
+
+  private withSaveConfirmation(result: TaskIntentResult, confirmed: boolean): TaskIntentResult {
+    return confirmed && result.intent === "CREATE_TASK" ? { ...result, confirmed: true } : result;
+  }
+
   private fallbackHeuristicParser(text: string, now: Date): TaskIntentResult {
     const fast = this.fastParseThaiTask(text, now);
     if (fast) return fast;
+
+    // The message mentioned a task but was blocked by the spam guard — ask for a
+    // clear date/time instead of silently storing nothing.
+    if (TASK_KEYWORD_PATTERN.test(this.normalizeMessage(text))) {
+      return { intent: "UNKNOWN", replyMessage: CLARIFY_TASK_MESSAGE };
+    }
 
     return {
       intent: "UNKNOWN",

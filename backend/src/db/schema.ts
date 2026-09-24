@@ -4,6 +4,10 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   deviceUuid: varchar("device_uuid", { length: 128 }).notNull().unique(),
   lineUserId: varchar("line_user_id", { length: 128 }),
+  // IANA timezone used to decide when an Action Nudge may be delivered
+  timezone: varchar("timezone", { length: 64 }).notNull().default("Asia/Bangkok"),
+  // Delivery state: at most one Action Nudge per user per local day
+  lastNudgeAt: timestamp("last_nudge_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -18,6 +22,9 @@ export const tasks = pgTable("tasks", {
   estimatedMinutes: integer("estimated_minutes").notNull(),
   status: varchar("status", { length: 32 }).notNull().default("NOT_STARTED"),
   postponeCount: integer("postpone_count").notNull().default(0),
+  // Action Nudge history: when this task was nudged last, and how many times in a row
+  lastNudgedAt: timestamp("last_nudged_at", { withTimezone: true }),
+  nudgeCount: integer("nudge_count").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });

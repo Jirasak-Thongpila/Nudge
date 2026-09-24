@@ -18,6 +18,8 @@ class MockUserService extends UserService {
         id: this.nextId++,
         deviceUuid: trimmed,
         lineUserId: null,
+        timezone: "Asia/Bangkok",
+        lastNudgeAt: null,
         createdAt: new Date(),
       };
       this.store.push(existing);

@@ -27,6 +27,25 @@ class MockUserService extends UserService {
         id: this.nextId++,
         deviceUuid: trimmed,
         lineUserId: null,
+        timezone: "Asia/Bangkok",
+        lastNudgeAt: null,
+        createdAt: new Date(),
+      };
+      this.store.push(existing);
+    }
+    return existing;
+  }
+
+  override async getOrCreateUserByLineUserId(lineUserId: string): Promise<User> {
+    const trimmed = lineUserId.trim();
+    let existing = this.store.find((u) => u.lineUserId === trimmed);
+    if (!existing) {
+      existing = {
+        id: this.nextId++,
+        deviceUuid: `line-${trimmed}`,
+        lineUserId: trimmed,
+        timezone: "Asia/Bangkok",
+        lastNudgeAt: null,
         createdAt: new Date(),
       };
       this.store.push(existing);
@@ -60,6 +79,8 @@ class MockTaskService extends TaskService {
       estimatedMinutes: input.estimatedMinutes,
       status: "NOT_STARTED",
       postponeCount: 0,
+      lastNudgedAt: null,
+      nudgeCount: 0,
       createdAt: new Date(),
       deletedAt: null,
     };

@@ -5,8 +5,9 @@ import { taskRoutes, type TaskRouteOptions } from "./routes/tasks";
 import { dashboardRoutes } from "./routes/dashboard";
 import { focusRoutes, type FocusRouteOptions } from "./routes/focus";
 import { lineRoutes, type LineRouteOptions } from "./routes/line";
+import { nudgeRoutes, type NudgeRouteOptions } from "./routes/nudges";
 
-export type AppOptions = TaskRouteOptions & FocusRouteOptions & LineRouteOptions;
+export type AppOptions = TaskRouteOptions & FocusRouteOptions & LineRouteOptions & NudgeRouteOptions;
 
 export const createApp = (options?: AppOptions) =>
   new Elysia()
@@ -14,7 +15,13 @@ export const createApp = (options?: AppOptions) =>
       cors({
         origin: "*",
         methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "x-device-uuid", "x-line-user-id", "Authorization"],
+        allowedHeaders: [
+          "Content-Type",
+          "x-device-uuid",
+          "x-line-user-id",
+          "x-nudge-dispatch-key",
+          "Authorization",
+        ],
       })
     )
     .get("/health", () => ({
@@ -26,4 +33,5 @@ export const createApp = (options?: AppOptions) =>
     .use(taskRoutes(options))
     .use(dashboardRoutes(options))
     .use(focusRoutes(options))
-    .use(lineRoutes(options));
+    .use(lineRoutes(options))
+    .use(nudgeRoutes(options));

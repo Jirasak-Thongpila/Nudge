@@ -192,6 +192,9 @@ export class TaskService {
       return this.attachDerivedFields(existing);
     }
 
+    // Any edit or status change is movement: restart the nudge back-off
+    updates.nudgeCount = 0;
+
     const [updated] = await this.db
       .update(tasks)
       .set(updates)
@@ -241,11 +244,27 @@ export class TaskService {
       .update(tasks)
       .set({
         postponeCount: sql`${tasks.postponeCount} + 1`,
+        // The user just made a deliberate choice about this task, so any nudge
+        // back-off starts over.
+        nudgeCount: 0,
       })
       .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)))
       .returning();
 
     return this.attachDerivedFields(updated);
+  }
+
+  /**
+   * Records that an Action Nudge was delivered for this task.
+   */
+  async markNudged(taskId: number, at: Date = new Date()): Promise<void> {
+    await this.db
+      .update(tasks)
+      .set({
+        lastNudgedAt: at,
+        nudgeCount: sql`${tasks.nudgeCount} + 1`,
+      })
+      .where(eq(tasks.id, taskId));
   }
 
   async getRecommendedTask(userId: number): Promise<RecommendationResult | null> {

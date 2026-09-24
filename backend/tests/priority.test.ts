@@ -33,6 +33,8 @@ describe("Priority Scoring & Recommendation (Ticket 05)", () => {
         estimatedMinutes: 120,
         status: "NOT_STARTED",
         postponeCount: 3, // avoidance = 6
+        lastNudgedAt: null,
+        nudgeCount: 0,
         createdAt: new Date("2026-09-10T10:00:00.000Z"),
         deletedAt: null,
       };
@@ -60,6 +62,8 @@ describe("Priority Scoring & Recommendation (Ticket 05)", () => {
         estimatedMinutes: 30,
         status: "COMPLETED",
         postponeCount: 0,
+        lastNudgedAt: null,
+        nudgeCount: 0,
         createdAt: new Date(),
         deletedAt: null,
       };
@@ -76,6 +80,8 @@ describe("Priority Scoring & Recommendation (Ticket 05)", () => {
         estimatedMinutes: 20,
         status: "NOT_STARTED",
         postponeCount: 0,
+        lastNudgedAt: null,
+        nudgeCount: 0,
         createdAt: new Date(),
         deletedAt: null,
       };
@@ -89,6 +95,8 @@ describe("Priority Scoring & Recommendation (Ticket 05)", () => {
         estimatedMinutes: 120,
         status: "NOT_STARTED",
         postponeCount: 2, // avoidance 4 -> priority 17
+        lastNudgedAt: null,
+        nudgeCount: 0,
         createdAt: new Date(),
         deletedAt: null,
       };
