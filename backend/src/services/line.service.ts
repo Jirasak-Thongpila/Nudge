@@ -1022,6 +1022,174 @@ export class LineService {
   }
 
   /**
+   * Downloads binary audio content from LINE Messaging API.
+   */
+  async downloadAudioContent(messageId: string): Promise<Buffer> {
+    const url = `https://api-data.line.me/v2/bot/message/${messageId}/content`;
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${this.channelAccessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to download LINE audio: ${response.status} ${await response.text()}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  }
+
+  createVoiceConfirmationFlexMessage(result: {
+    transcription?: string;
+    title?: string;
+    deadline?: string;
+    importance?: number;
+    estimatedMinutes?: number;
+  }): LineFlexMessage {
+    const transcription = result.transcription || "ข้อความเสียง";
+    const title = result.title || "งานใหม่";
+    const deadlineText = result.deadline ? this.formatDeadline(new Date(result.deadline)) : "วันนี้ 23:59";
+    const importance = result.importance ?? 3;
+    const estimatedMinutes = result.estimatedMinutes ?? 30;
+
+    return {
+      type: "flex",
+      altText: `🎙️ บันทึกงานจากเสียง: ${title}`,
+      contents: {
+        type: "bubble",
+        header: {
+          type: "box",
+          layout: "vertical",
+          backgroundColor: "#4F46E5",
+          paddingAll: "16px",
+          contents: [
+            {
+              type: "text",
+              text: "🎙️ สรุปงานจากข้อความเสียง",
+              color: "#FFFFFF",
+              weight: "bold",
+              size: "sm",
+            },
+          ],
+        },
+        body: {
+          type: "box",
+          layout: "vertical",
+          paddingAll: "16px",
+          spacing: "md",
+          contents: [
+            {
+              type: "box",
+              layout: "vertical",
+              backgroundColor: "#F8FAFC",
+              cornerRadius: "8px",
+              paddingAll: "10px",
+              contents: [
+                {
+                  type: "text",
+                  text: `ได้ยินว่า: "${transcription}"`,
+                  color: "#475569",
+                  size: "xs",
+                  wrap: true,
+                },
+              ],
+            },
+            {
+              type: "text",
+              text: title,
+              color: "#1E293B",
+              weight: "bold",
+              size: "md",
+              wrap: true,
+            },
+            {
+              type: "box",
+              layout: "vertical",
+              spacing: "sm",
+              contents: [
+                {
+                  type: "box",
+                  layout: "horizontal",
+                  contents: [
+                    { type: "text", text: "กำหนดส่ง:", color: "#64748B", size: "xs", flex: 2 },
+                    { type: "text", text: deadlineText, color: "#1E293B", size: "xs", flex: 3, align: "end" },
+                  ],
+                },
+                {
+                  type: "box",
+                  layout: "horizontal",
+                  contents: [
+                    { type: "text", text: "ความสำคัญ:", color: "#64748B", size: "xs", flex: 2 },
+                    { type: "text", text: `${importance}/5`, color: "#1E293B", size: "xs", flex: 3, align: "end" },
+                  ],
+                },
+                {
+                  type: "box",
+                  layout: "horizontal",
+                  contents: [
+                    { type: "text", text: "เวลาโดยประมาณ:", color: "#64748B", size: "xs", flex: 2 },
+                    { type: "text", text: `${estimatedMinutes} นาที`, color: "#1E293B", size: "xs", flex: 3, align: "end" },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        footer: {
+          type: "box",
+          layout: "horizontal",
+          spacing: "sm",
+          paddingAll: "16px",
+          contents: [
+            {
+              type: "button",
+              style: "secondary",
+              height: "sm",
+              action: {
+                type: "message",
+                label: "ยกเลิก",
+                text: "ยกเลิก",
+              },
+            },
+            {
+              type: "button",
+              style: "primary",
+              color: "#4F46E5",
+              height: "sm",
+              action: {
+                type: "message",
+                label: "ยืนยันบันทึกงาน",
+                text: `ยืนยันบันทึกงาน ${title}`,
+              },
+            },
+          ],
+        },
+      },
+      quickReply: {
+        items: [
+          {
+            type: "action",
+            action: {
+              type: "message",
+              label: "✅ ยืนยันบันทึกงาน",
+              text: `ยืนยันบันทึกงาน ${title}`,
+            },
+          },
+          {
+            type: "action",
+            action: {
+              type: "message",
+              label: "❌ ยกเลิก",
+              text: "ยกเลิก",
+            },
+          },
+        ],
+      },
+    };
+  }
+
+  /**
    * Handles incoming LINE webhook events.
    * Leverages Gemini 2.5 Flash for natural language Thai task creation & intent routing.
    */
@@ -1241,6 +1409,64 @@ export class LineService {
             ]);
             repliesSent++;
           }
+        }
+      } else if (event.type === "message" && event.message?.type === "audio") {
+        const messageId = event.message.id;
+        const user = await this.userService.getOrCreateUserByLineUserId(lineUserId);
+
+        try {
+          const audioBuffer = await this.downloadAudioContent(messageId);
+          const parsed = await this.geminiService.parseTaskFromAudio(audioBuffer, "audio/m4a");
+
+          if (parsed.intent === "CREATE_TASK" && parsed.title) {
+            const flex = this.createVoiceConfirmationFlexMessage(parsed);
+            await this.replyMessage(replyToken, [flex]);
+            repliesSent++;
+          } else if (parsed.intent === "VIEW_TASKS") {
+            const tasks = await this.taskService.getTasksForUser(user.id);
+            const activeTasks = tasks.filter((t) => t.status !== "COMPLETED");
+            const flex = this.createTaskListFlexMessage(activeTasks);
+            await this.replyMessage(replyToken, [flex]);
+            repliesSent++;
+          } else if (parsed.intent === "GET_RECOMMENDATION") {
+            const recommendation = await this.taskService.getRecommendedTask(user.id);
+            if (!recommendation) {
+              await this.replyMessage(replyToken, [
+                {
+                  type: "text",
+                  text: "🎉 ยอดเยี่ยมมากครับ! ตอนนี้คุณไม่มีงานค้างเลย พักผ่อนให้สบายใจได้ครับ 🌱",
+                },
+              ]);
+            } else {
+              const flex = this.createActionNudgeFlexMessage({
+                ...recommendation.task,
+                adaptiveNudgeMessage: recommendation.adaptiveNudgeMessage,
+              });
+              await this.replyMessage(replyToken, [flex]);
+            }
+            repliesSent++;
+          } else {
+            await this.replyMessage(replyToken, [
+              {
+                type: "text",
+                text:
+                  parsed.replyMessage ||
+                  (parsed.transcription
+                    ? `🎙️ ได้ยินว่า: "${parsed.transcription}"\n\nสามารถบอกให้บันทึกงาน ดูงาน หรือช่วยเริ่มงานได้นะครับ 🌱`
+                    : "ฟังเสียงไม่ค่อยชัดเจนเลยครับ รบกวนลองส่งใหม่อีกครั้งนะครับ"),
+              },
+            ]);
+            repliesSent++;
+          }
+        } catch (error) {
+          console.error("Error processing LINE audio message:", error);
+          await this.replyMessage(replyToken, [
+            {
+              type: "text",
+              text: "ขออภัยครับ ไม่สามารถประมวลผลไฟล์เสียงได้ในขณะนี้ กรุณาลองใหม่อีกครั้งนะครับ",
+            },
+          ]);
+          repliesSent++;
         }
       }
     }
