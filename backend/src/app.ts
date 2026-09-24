@@ -24,11 +24,46 @@ export const createApp = (options?: AppOptions) =>
         ],
       })
     )
+    .get("/", () => ({
+      status: "ok",
+      name: "Nudge API",
+      version: "0.1.0",
+      timestamp: new Date().toISOString(),
+      endpoints: {
+        health: "/health",
+        tasks: "/tasks",
+        dashboard: "/dashboard",
+        lineWebhook: "/line/webhook",
+        nudgesDispatch: "/nudges/dispatch",
+      },
+    }))
     .get("/health", () => ({
       status: "ok",
       timestamp: new Date().toISOString(),
       service: "nudge-backend",
     }))
+    .onError(({ code, error, set }) => {
+      if (code === "NOT_FOUND") {
+        set.status = 404;
+        return {
+          success: false,
+          error: "Endpoint not found",
+        };
+      }
+      if (code === "VALIDATION") {
+        set.status = 422;
+        return {
+          success: false,
+          error: error?.message || "Validation error",
+        };
+      }
+      console.error("Unhandled error:", error);
+      set.status = 500;
+      return {
+        success: false,
+        error: error?.message || "Internal server error",
+      };
+    })
     .use(userRoutes(options))
     .use(taskRoutes(options))
     .use(dashboardRoutes(options))
