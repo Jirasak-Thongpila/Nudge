@@ -54,14 +54,14 @@ export const createApp = (options?: AppOptions) =>
         set.status = 422;
         return {
           success: false,
-          error: error?.message || "Validation error",
+          error: (error as any)?.message || "Validation error",
         };
       }
       console.error("Unhandled error:", error);
       set.status = 500;
       return {
         success: false,
-        error: error?.message || "Internal server error",
+        error: (error as any)?.message || "Internal server error",
       };
     })
     .use(userRoutes(options))
