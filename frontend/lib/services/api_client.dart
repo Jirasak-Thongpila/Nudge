@@ -7,6 +7,11 @@ import '../models/dashboard_data.dart';
 import '../models/focus_session.dart';
 import 'auth_service.dart';
 
+const String defaultApiUrl = String.fromEnvironment(
+  'API_URL',
+  defaultValue: 'http://localhost:3000',
+);
+
 class ApiClient {
   final String baseUrl;
   final AuthService authService;
@@ -14,7 +19,7 @@ class ApiClient {
   String? _lineUserId;
 
   ApiClient({
-    this.baseUrl = 'http://localhost:3000',
+    this.baseUrl = defaultApiUrl,
     AuthService? authService,
     http.Client? httpClient,
   })  : authService = authService ?? AuthService(),

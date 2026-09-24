@@ -15,6 +15,11 @@ class LiffUserProfile {
   });
 }
 
+const String defaultLiffId = String.fromEnvironment(
+  'LINE_LIFF_ID',
+  defaultValue: '2011693149-NldwbAUx',
+);
+
 class LiffService {
   static final LiffService instance = LiffService._internal();
   LiffService._internal();
@@ -37,7 +42,7 @@ class LiffService {
       return false;
     }
 
-    final targetLiffId = liffId ?? '2011693149-NldwbAUx'; // Fallback to production LIFF ID
+    final targetLiffId = liffId ?? defaultLiffId;
 
     try {
       final liff = FlutterLineLiff.instance;

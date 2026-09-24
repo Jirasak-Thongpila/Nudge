@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: nudge-backend
+    runtime: docker
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    plan: starter
+    region: singapore
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        sync: false
+      - key: LINE_CHANNEL_ACCESS_TOKEN
+        sync: false
+      - key: LINE_CHANNEL_SECRET
+        sync: false
+      - key: LINE_LIFF_ID
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: NUDGE_DISPATCH_KEY
+        generateValue: true
+    healthCheckPath: /health
+
+  - type: cron
+    name: nudge-dispatch-cron
+    runtime: image
+    image:
+      url: curlimages/curl:latest
+    schedule: "0 1-14 * * *" # Every hour during daytime (Bangkok 08:00 - 21:00 is UTC 01:00 - 14:00)
+    command: >-
+      curl -s -X POST https://nudge-backend.onrender.com/nudges/dispatch
+      -H "x-nudge-dispatch-key: $NUDGE_DISPATCH_KEY"
+    envVars:
+      - key: NUDGE_DISPATCH_KEY
+        fromService:
+          type: web
+          name: nudge-backend
+          envVarKey: NUDGE_DISPATCH_KEY
