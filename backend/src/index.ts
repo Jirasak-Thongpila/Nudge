@@ -5,7 +5,7 @@ const port = Number(process.env.PORT) || 3000;
 const hostname = process.env.HOST || "0.0.0.0";
 const app = createApp();
 
-if (!process.env.VERCEL) {
+if (typeof Bun !== "undefined" && !process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
   app.listen({ port, hostname }, () => {
     console.log(`🚀 Nudge backend running at http://${hostname}:${port}`);
   });
