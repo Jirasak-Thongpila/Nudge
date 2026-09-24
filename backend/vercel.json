@@ -9,7 +9,7 @@
   "crons": [
     {
       "path": "/nudges/dispatch",
-      "schedule": "0 1-14 * * *"
+      "schedule": "0 2 * * *"
     }
   ]
 }
