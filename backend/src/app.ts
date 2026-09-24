@@ -58,6 +58,11 @@ export const createApp = (options?: AppOptions) =>
       version: "0.1.0",
       timestamp: new Date().toISOString(),
     }))
+    .get("/debug-url", ({ request }) => ({
+      url: request.url,
+      path: new URL(request.url).pathname,
+      headers: Object.fromEntries(request.headers.entries()),
+    }))
     .get("/health", () => ({
       status: "ok",
       timestamp: new Date().toISOString(),
