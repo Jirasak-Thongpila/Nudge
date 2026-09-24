@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "bunVersion": "1.x",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/src/index.ts"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/nudges/dispatch",
+      "schedule": "0 1-14 * * *"
+    }
+  ]
+}

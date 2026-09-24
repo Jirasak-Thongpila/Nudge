@@ -41,34 +41,45 @@
 
 สามารถเลือกใช้วิธีใดวิธีหนึ่งด้านล่าง:
 
-### วิธีที่ A: Deploy บน Render (แนะนำ - ง่ายสุด มี Blueprint ในตัว)
+### วิธีที่ A: Deploy บน Vercel (แนะนำ - เร็วที่สุด รองรับ Serverless Bun + Vercel Cron)
+
+Elysia รองรับการรันบน Vercel แบบ Serverless และเราได้เตรียม [backend/vercel.json](file:///d:/JWS/project/mobile/Nudge/backend/vercel.json) ไว้ให้เรียบร้อยแล้ว:
+
+1. **ผ่าน Vercel CLI:**
+   ```bash
+   cd backend
+   vercel
+   # เลือกตั้งค่าโปรเจกต์ และ deploy ขึ้น production ด้วย:
+   vercel --prod
+   ```
+2. **ผ่าน Vercel Dashboard (เชื่อม GitHub):**
+   - ไปที่ [Vercel Dashboard](https://vercel.com/new) -> **Import Git Repository**
+   - **Root Directory:** ให้เลือกโฟลเดอร์ `backend`
+   - **Framework Preset:** เลือก `Other`
+   - **Environment Variables:** ใส่ค่า:
+     - `DATABASE_URL` (Neon PostgreSQL)
+     - `LINE_CHANNEL_ACCESS_TOKEN`
+     - `LINE_CHANNEL_SECRET`
+     - `LINE_LIFF_ID`
+     - `GEMINI_API_KEY`
+     - `NUDGE_DISPATCH_KEY` (หรือ Vercel จะสร้าง `CRON_SECRET` ให้)
+   - กด **Deploy** จะได้โดเมน HTTPS ทันที เช่น `https://nudge-backend.vercel.app`
+3. **Vercel Cron:** ระบบจะเปิดใช้งาน Cron Job เรียก `/nudges/dispatch` ตามเวลาใน `vercel.json` ให้อัตโนมัติ!
+
+### วิธีที่ B: Deploy บน Render (Docker Container)
 1. Fork หรือ Push โค้ดขึ้น GitHub
 2. เข้าสู่ [Render Dashboard](https://dashboard.render.com)
 3. เลือก **New +** -> **Blueprint** แล้วเลือก Repository นี้ (ระบบจะอ่านไฟล์ [render.yaml](file:///d:/JWS/project/mobile/Nudge/render.yaml) อัตโนมัติ)
-4. กรอกค่า Environment Variables:
-   - `DATABASE_URL`
-   - `LINE_CHANNEL_ACCESS_TOKEN`
-   - `LINE_CHANNEL_SECRET`
-   - `LINE_LIFF_ID`
-   - `GEMINI_API_KEY`
-   - `NUDGE_DISPATCH_KEY`
-5. Render จะสร้างทั้ง **Web Service** และ **Cron Job** ให้โดยอัตโนมัติ
+4. กรอกค่า Environment Variables แล้วกด Apply
 
-### วิธีที่ B: Deploy บน Railway
+### วิธีที่ C: Deploy บน Railway
 1. เข้าสู่ [Railway Dashboard](https://railway.app)
 2. เลือก **New Project** -> **Deploy from GitHub repo** -> เลือกโฟลเดอร์ `backend`
-3. ในแท็บ **Variables** ให้ใส่ค่า Environment Variables ทั้งหมด
-4. Railway จะตรวจจับ `backend/Dockerfile` และเริ่ม Build อัตโนมัติ
-5. ในแท็บ **Settings** -> **Networking** ให้กด **Generate Domain** เพื่อรับ HTTPS URL เช่น `https://nudge-backend-production.up.railway.app`
+3. ในแท็บ **Variables** ใส่ค่า Environment Variables แล้วรับโดเมน HTTPS
 
-### วิธีที่ C: Deploy บน VPS / Server ตัวเองด้วย Docker Compose
+### วิธีที่ D: Deploy บน VPS / Docker Compose
 1. อัปโหลดโค้ดไปยังเซิร์ฟเวอร์
-2. สร้างไฟล์ `.env` ที่ root โดยอิงจาก `backend/.env.example`
-3. รันคำสั่ง:
-   ```bash
-   docker compose up -d --build
-   ```
-4. กำหนด Nginx Reverse Proxy พร้อม Let's Encrypt SSL ชี้มาที่พอร์ต `3000`
+2. รัน `docker compose up -d --build`
 
 ---
 

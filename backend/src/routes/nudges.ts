@@ -21,7 +21,11 @@ export const nudgeRoutes = (options?: NudgeRouteOptions) => {
      * behalf of the whole system, so it requires a shared secret instead.
      */
     .post("/dispatch", async ({ headers, set }) => {
-      const dispatchKey = options?.dispatchKey ?? process.env.NUDGE_DISPATCH_KEY ?? "";
+      const dispatchKey =
+        options?.dispatchKey ??
+        process.env.NUDGE_DISPATCH_KEY ??
+        process.env.CRON_SECRET ??
+        "";
 
       if (!dispatchKey) {
         set.status = 503;
@@ -31,7 +35,10 @@ export const nudgeRoutes = (options?: NudgeRouteOptions) => {
         };
       }
 
-      if (headers["x-nudge-dispatch-key"] !== dispatchKey) {
+      const isHeaderKey = headers["x-nudge-dispatch-key"] === dispatchKey;
+      const isBearerKey = headers["authorization"] === `Bearer ${dispatchKey}`;
+
+      if (!isHeaderKey && !isBearerKey) {
         set.status = 401;
         return {
           success: false,
