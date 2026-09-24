@@ -24,6 +24,9 @@ export const createApp = (options?: AppOptions) =>
         ],
       })
     )
+    .onRequest(({ request }) => {
+      console.log(`[REQ] ${request.method} ${request.url}`);
+    })
     .get("/", () => ({
       status: "ok",
       name: "Nudge API",
@@ -36,6 +39,24 @@ export const createApp = (options?: AppOptions) =>
         lineWebhook: "/line/webhook",
         nudgesDispatch: "/nudges/dispatch",
       },
+    }))
+    .get("", () => ({
+      status: "ok",
+      name: "Nudge API",
+      version: "0.1.0",
+      timestamp: new Date().toISOString(),
+    }))
+    .get("/api", () => ({
+      status: "ok",
+      name: "Nudge API",
+      version: "0.1.0",
+      timestamp: new Date().toISOString(),
+    }))
+    .get("/api/index.js", () => ({
+      status: "ok",
+      name: "Nudge API",
+      version: "0.1.0",
+      timestamp: new Date().toISOString(),
     }))
     .get("/health", () => ({
       status: "ok",
