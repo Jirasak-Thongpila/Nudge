@@ -24,6 +24,10 @@ export interface TaskIntentResult {
   replyMessage?: string;
 }
 
+export interface AudioTaskIntentResult extends TaskIntentResult {
+  transcription?: string;
+}
+
 /** Questions are never treated as an instruction to complete or delete a task. */
 const CANCEL_MESSAGE = "รับทราบครับ ยกเลิกแล้ว ไม่มีการเปลี่ยนแปลงใด ๆ นะครับ 🌱";
 
@@ -628,6 +632,135 @@ Rules:
       intent: "UNKNOWN",
       replyMessage: `สวัสดีครับ! สามารถพิมพ์บอกงาน เช่น "พรุ่งนี้ส่งโปรเจกต์" หรือพิมพ์ "งานวันนี้" เพื่อดูงานได้เลยครับ 🌱`,
     };
+  }
+
+  /**
+   * Multimodal audio parser using Gemini 1.5/2.0 Flash.
+   * Transcribes Thai speech and extracts structured task intent in a single call.
+   */
+  async parseTaskFromAudio(
+    audioBuffer: Buffer,
+    mimeType: string = "audio/m4a",
+    now: Date = new Date()
+  ): Promise<AudioTaskIntentResult> {
+    if (!this.apiKey) {
+      return {
+        intent: "UNKNOWN",
+        replyMessage: "ระบบบันทึกเสียงต้องการ Gemini API Key ในการประมวลผลครับ",
+      };
+    }
+
+    const base64Audio = audioBuffer.toString("base64");
+    const systemPrompt = `You are an intelligent multimodal voice assistant for Nudge, a behavioral productivity app.
+Listen carefully to the user's spoken audio (primarily in Thai or English).
+First, accurately transcribe what the user said in "transcription".
+Second, analyze their intent and extract structured task details if they are asking to add or track a task.
+The current date and time is: ${now.toISOString()} (Timezone: Asia/Bangkok, UTC+7).
+
+Rules:
+1. "transcription": verbatim transcription of user speech in Thai.
+2. If the user wants to add/create a task, set intent to "CREATE_TASK":
+   - "title": clean, concise title in Thai (from the user's spoken words).
+   - "deadline": ISO-8601 string. If the user only specifies a day (e.g. "พรุ่งนี้", "วันศุกร์"), default time to 23:59:59.
+   - "importance": integer 1-5 (default to 3 if not specified, 4 or 5 if "สำคัญ"/"ด่วน").
+   - "estimatedMinutes": integer minutes (default to 30 if not specified).
+3. If the user asks what tasks they have, set intent to "VIEW_TASKS".
+4. If the user asks for a recommendation or what to start now, set intent to "GET_RECOMMENDATION".
+5. If the user says they completed a task, set intent to "COMPLETE_TASK".
+6. If the user asks to postpone, set intent to "POSTPONE_TASK".
+7. If casual talk or unclear audio, set intent to "UNKNOWN" with an empathetic Thai "replyMessage".`;
+
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  { text: systemPrompt },
+                  {
+                    inlineData: {
+                      mimeType,
+                      data: base64Audio,
+                    },
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: "object",
+                properties: {
+                  transcription: { type: "string" },
+                  intent: {
+                    type: "string",
+                    enum: [
+                      "CREATE_TASK",
+                      "VIEW_TASKS",
+                      "COMPLETE_TASK",
+                      "POSTPONE_TASK",
+                      "DELETE_TASK",
+                      "GET_RECOMMENDATION",
+                      "GET_ID",
+                      "HELP",
+                      "UNKNOWN",
+                    ],
+                  },
+                  title: { type: "string" },
+                  deadline: { type: "string" },
+                  importance: { type: "integer" },
+                  estimatedMinutes: { type: "integer" },
+                  taskQuery: { type: "string" },
+                  replyMessage: { type: "string" },
+                },
+                required: ["intent", "transcription"],
+              },
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        console.error(`Gemini audio API error: ${response.status} ${await response.text()}`);
+        return {
+          intent: "UNKNOWN",
+          replyMessage: "ขออภัยครับ เกิดข้อผิดพลาดในการประมวลผลเสียง กรุณาลองใหม่อีกครั้งนะครับ",
+        };
+      }
+
+      const data = (await response.json()) as any;
+      const contentText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!contentText) {
+        return {
+          intent: "UNKNOWN",
+          replyMessage: "ฟังเสียงไม่ค่อยชัดเจนเลยครับ รบกวนลองส่งใหม่อีกครั้งนะครับ",
+        };
+      }
+
+      const parsed = JSON.parse(contentText) as AudioTaskIntentResult;
+      // Apply sensible defaults if CREATE_TASK
+      if (parsed.intent === "CREATE_TASK") {
+        if (!parsed.importance) parsed.importance = 3;
+        if (!parsed.estimatedMinutes) parsed.estimatedMinutes = 30;
+        if (!parsed.deadline) {
+          const defaultDeadline = new Date(now);
+          defaultDeadline.setHours(23, 59, 59, 999);
+          parsed.deadline = defaultDeadline.toISOString();
+        }
+      }
+      return parsed;
+    } catch (error) {
+      console.error("Gemini audio parsing error:", error);
+      return {
+        intent: "UNKNOWN",
+        replyMessage: "ขออภัยครับ ไม่สามารถถอดความเสียงได้ในขณะนี้ กรุณาลองใหม่อีกครั้งนะครับ",
+      };
+    }
   }
 }
 
