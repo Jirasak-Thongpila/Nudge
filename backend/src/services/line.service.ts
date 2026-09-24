@@ -1040,6 +1040,88 @@ export class LineService {
     return Buffer.from(arrayBuffer);
   }
 
+  /**
+   * Starts a 10-minute focus session directly in LINE chat.
+   * Updates task status to IN_PROGRESS and encourages the user without requiring app open.
+   */
+  async startChatFocusSession(userId: number, taskId: number, replyToken: string): Promise<void> {
+    const task = await this.taskService.getTaskById(userId, taskId);
+    if (!task) {
+      await this.replyMessage(replyToken, [{ type: "text", text: "ไม่พบงานที่ต้องการเริ่มโฟกัสครับ" }]);
+      return;
+    }
+
+    // Update status to IN_PROGRESS
+    await this.taskService.updateTask(userId, taskId, { status: "IN_PROGRESS" });
+
+    await this.replyMessage(replyToken, [
+      {
+        type: "text",
+        text: `⏱️ เริ่มช่วงเวลาโฟกัส 10 นาทีสำหรับ:\n📌 "${task.title}"\n\nวางมือถือแล้วเริ่มก้าวแรกสั้นๆ ได้เลยครับ! อีก 10 นาทีบอทจะกลับมาทักถามนะ สู้ๆ ครับ 💪`,
+        quickReply: {
+          items: [
+            {
+              type: "action",
+              action: {
+                type: "message",
+                label: "✅ ทำงานนี้เสร็จแล้ว",
+                text: `ทำงานเสร็จแล้ว #${taskId}`,
+              },
+            },
+            {
+              type: "action",
+              action: {
+                type: "message",
+                label: "☕ พักก่อนดีกว่า",
+                text: "พักก่อนดีกว่า",
+              },
+            },
+          ],
+        },
+      },
+    ]);
+  }
+
+  /**
+   * Pushes a follow-up check-in message to the user after their 10-minute focus interval.
+   */
+  async sendFocusSessionCheckIn(lineUserId: string, taskId: number): Promise<boolean> {
+    return this.pushMessages(lineUserId, [
+      {
+        type: "text",
+        text: `🔔 ครบ 10 นาทีแล้วครับ! รู้สึกเป็นยังไงบ้าง? ยอดเยี่ยมมากที่เริ่มก้าวแรกได้สำเร็จ 🎉`,
+        quickReply: {
+          items: [
+            {
+              type: "action",
+              action: {
+                type: "message",
+                label: "✅ ทำงานนี้เสร็จแล้ว",
+                text: `ทำงานเสร็จแล้ว #${taskId}`,
+              },
+            },
+            {
+              type: "action",
+              action: {
+                type: "message",
+                label: "💪 ขอทำต่ออีกนิด",
+                text: `ขอทำต่อ #${taskId}`,
+              },
+            },
+            {
+              type: "action",
+              action: {
+                type: "message",
+                label: "☕ พักก่อนดีกว่า",
+                text: "พักก่อนดีกว่า",
+              },
+            },
+          ],
+        },
+      },
+    ]);
+  }
+
   createVoiceConfirmationFlexMessage(result: {
     transcription?: string;
     title?: string;
@@ -1255,6 +1337,32 @@ export class LineService {
           lower === "วิธีใช้" ||
           lower === "คำสั่ง" ||
           lower === "ทำอะไรได้บ้าง";
+
+        const focusMatch = text.match(/^(?:เริ่ม\s*10\s*นาที|เริ่มโฟกัส|start\s*focus)(.*)$/i);
+        if (focusMatch) {
+          const rest = focusMatch[1].trim();
+          const idMatch = rest.match(/#?(\d+)/);
+          let targetTaskId: number | undefined;
+
+          if (idMatch) {
+            targetTaskId = parseInt(idMatch[1], 10);
+          } else {
+            const rec = await this.taskService.getRecommendedTask(user.id);
+            if (rec) {
+              targetTaskId = rec.task.id;
+            } else {
+              const tasks = await this.taskService.getTasksForUser(user.id);
+              const active = tasks.filter((t) => t.status !== "COMPLETED");
+              if (active.length > 0) targetTaskId = active[0].id;
+            }
+          }
+
+          if (targetTaskId) {
+            await this.startChatFocusSession(user.id, targetTaskId, replyToken);
+            repliesSent++;
+            continue;
+          }
+        }
 
         if (isIdQuery) {
           await this.replyMessage(replyToken, [
