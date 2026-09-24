@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nudge API — Online</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 24px;
+      padding: 40px;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+      text-align: center;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+    .badge::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 12px #10b981;
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+    p {
+      color: #94a3b8;
+      font-size: 15px;
+      line-height: 1.5;
+      margin-bottom: 28px;
+    }
+    .endpoints {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 14px;
+      padding: 16px;
+      text-align: left;
+      font-family: monospace;
+      font-size: 13px;
+    }
+    .endpoint-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid #1e293b;
+    }
+    .endpoint-row:last-child { border-bottom: none; }
+    .method { color: #818cf8; font-weight: 700; }
+    .path { color: #e2e8f0; }
+    .status { color: #34d399; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">API Service Online</div>
+    <h1>Nudge Backend</h1>
+    <p>Behavioral Productivity & Action Nudge System is running on Vercel Serverless.</p>
+    <div class="endpoints">
+      <div class="endpoint-row">
+        <span><span class="method">GET</span> <span class="path">/health</span></span>
+        <span class="status">200 OK</span>
+      </div>
+      <div class="endpoint-row">
+        <span><span class="method">POST</span> <span class="path">/line/webhook</span></span>
+        <span class="status">Active</span>
+      </div>
+      <div class="endpoint-row">
+        <span><span class="method">POST</span> <span class="path">/nudges/dispatch</span></span>
+        <span class="status">Active</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
