@@ -24,8 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _backendOffline = false;
   String? _errorMessage;
 
-  final TextEditingController _devLineIdController =
-      TextEditingController(text: 'test_line_user_01');
+
 
   @override
   void initState() {
@@ -36,7 +35,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    _devLineIdController.dispose();
     super.dispose();
   }
 
@@ -142,44 +140,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _handleDevLogin(String lineUserId, {String? displayName}) async {
-    if (lineUserId.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('กรุณาระบุ LINE User ID สำหรับทดสอบ'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
 
-    setState(() {
-      _isLoading = true;
-      _loadingMessage = 'กำลังจำลองการเข้าสู่ระบบ LINE ($lineUserId)...';
-    });
-
-    try {
-      final user = await _apiClient.loginWithLine(
-        lineUserId.trim(),
-        displayName: displayName ?? 'Dev Tester',
-      );
-      if (mounted) {
-        _navigateToDashboard(user);
-      }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('จำลองการเข้าสู่ระบบล้มเหลว: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 
   void _navigateToDashboard(User user) {
     Navigator.of(context).pushReplacement(
@@ -507,137 +468,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
 
-        const SizedBox(height: 16),
 
-        // Developer / Testing Mode Panel
-        Card(
-          elevation: 0,
-          color: colors.cardSurface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.cardRadius),
-            side: BorderSide(color: colors.cardBorder),
-          ),
-          child: Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              leading: const Icon(
-                Icons.code_rounded,
-                color: AppColors.amber,
-                size: 22,
-              ),
-              title: Text(
-                'โหมดนักพัฒนา (Dev / Test Mode)',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: colors.textPrimary,
-                ),
-              ),
-              subtitle: Text(
-                'จำลอง LINE Login บน Localhost / Windows',
-                style: TextStyle(fontSize: 11, color: colors.textSecondary),
-              ),
-              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              children: [
-                Divider(height: 1, color: colors.cardBorder),
-                const SizedBox(height: 12),
-                Text(
-                  'เลือกบัญชีทดสอบด่วน (1-Click Simulators):',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.textSecondary),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _handleDevLogin(
-                          'test_line_user_01',
-                          displayName: 'Test User 01',
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          backgroundColor: colors.cardSurfaceElevated,
-                          side: BorderSide(color: colors.cardBorder),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.sm),
-                          ),
-                        ),
-                        icon: Icon(Icons.person, size: 16, color: colors.isDark ? AppColors.primaryLight : AppColors.primary),
-                        label: Text('User 01', style: TextStyle(fontSize: 12, color: colors.textPrimary)),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _handleDevLogin(
-                          'test_line_user_02',
-                          displayName: 'Test User 02',
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          backgroundColor: colors.cardSurfaceElevated,
-                          side: BorderSide(color: colors.cardBorder),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.sm),
-                          ),
-                        ),
-                        icon: Icon(Icons.person, size: 16, color: colors.isDark ? AppColors.tealLight : AppColors.teal),
-                        label: Text('User 02', style: TextStyle(fontSize: 12, color: colors.textPrimary)),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _devLineIdController,
-                        decoration: InputDecoration(
-                          labelText: 'Custom LINE User ID',
-                          labelStyle: TextStyle(color: colors.textSecondary),
-                          isDense: true,
-                          fillColor: colors.cardSurfaceElevated,
-                          contentPadding:
-                              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.sm),
-                            borderSide: BorderSide(color: colors.cardBorder),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.sm),
-                            borderSide: BorderSide(color: colors.cardBorder),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.sm),
-                            borderSide: const BorderSide(color: AppColors.primary),
-                          ),
-                        ),
-                        style: TextStyle(fontSize: 12, color: colors.textPrimary),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton(
-                      onPressed: () => _handleDevLogin(
-                        _devLineIdController.text,
-                        displayName: 'Custom Dev User',
-                      ),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.amber,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                        ),
-                      ),
-                      child: const Text('เข้าสู่ระบบ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
 
         const SizedBox(height: 24),
         Center(
