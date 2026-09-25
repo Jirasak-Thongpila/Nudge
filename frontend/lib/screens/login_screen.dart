@@ -4,6 +4,7 @@ import '../models/user.dart';
 import '../services/api_client.dart';
 import '../services/deep_link_service.dart';
 import '../services/liff_service.dart';
+import '../theme/app_theme.dart';
 import 'dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -212,7 +213,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC), // Slate 50 background
+      backgroundColor: AppColors.bgCanvas,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -232,93 +233,91 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildLoadingState() {
-    return Card(
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-        side: BorderSide(color: Colors.grey.shade200),
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardSurface,
+        borderRadius: BorderRadius.circular(AppRadius.xxl),
+        border: Border.all(color: AppColors.cardBorder),
+        boxShadow: AppShadows.card,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(36.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(
-              width: 48,
-              height: 48,
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
-              ),
+      padding: const EdgeInsets.all(36.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 48,
+            height: 48,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
-            const SizedBox(height: 24),
-            Text(
-              _loadingMessage,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade800,
-              ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            _loadingMessage,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
             ),
-            const SizedBox(height: 8),
-            Text(
-              'ระบบกำลังเตรียมความพร้อมของข้อมูล',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'ระบบกำลังเตรียมความพร้อมของข้อมูล',
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildOfflineState() {
-    return Card(
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-        side: BorderSide(color: Colors.red.shade100),
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardSurface,
+        borderRadius: BorderRadius.circular(AppRadius.xxl),
+        border: Border.all(color: AppColors.rose.withValues(alpha: 0.4)),
+        boxShadow: AppShadows.card,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.cloud_off_rounded, size: 48, color: Colors.red.shade600),
+      padding: const EdgeInsets.all(32.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.rose.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.rose.withValues(alpha: 0.3)),
             ),
-            const SizedBox(height: 20),
-            const Text(
-              'ไม่สามารถเชื่อมต่อ Backend ได้',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            child: const Icon(Icons.cloud_off_rounded, size: 48, color: AppColors.roseLight),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'ไม่สามารถเชื่อมต่อ Backend ได้',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _errorMessage ??
+                'กรุณาตรวจสอบว่าเซิร์ฟเวอร์ Backend รันอยู่ที่ ${_apiClient.baseUrl}',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+          ),
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            onPressed: _initialize,
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.buttonRadius)),
             ),
-            const SizedBox(height: 8),
-            Text(
-              _errorMessage ??
-                  'กรุณาตรวจสอบว่าเซิร์ฟเวอร์ Backend รันอยู่ที่ ${_apiClient.baseUrl}',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: _initialize,
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF6366F1),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              icon: const Icon(Icons.refresh),
-              label: const Text('ลองใหม่อีกครั้ง'),
-            ),
-          ],
-        ),
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('ลองใหม่อีกครั้ง'),
+          ),
+        ],
       ),
     );
   }
@@ -335,62 +334,58 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             children: [
               Container(
-                width: 72,
-                height: 72,
+                width: 76,
+                height: 76,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF6366F1), Color(0xFF818CF8)],
+                    colors: [Color(0xFF4F46E5), Color(0xFF6366F1)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF6366F1).withValues(alpha: 0.3),
-                      blurRadius: 16,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
+                  borderRadius: BorderRadius.circular(AppRadius.xl),
+                  boxShadow: AppShadows.primaryGlow,
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                 ),
                 child: const Icon(
                   Icons.psychology_alt_rounded,
-                  size: 40,
+                  size: 42,
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               const Text(
                 'Nudge',
                 style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                  color: Color(0xFF1E293B), // Slate 800
+                  fontSize: 34,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.6,
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 6),
-              Text(
+              const Text(
                 'ก้าวข้ามการผัดวันประกันพรุ่งด้วยก้าวเล็กๆ',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
-                  color: Colors.grey.shade600,
+                  color: AppColors.textSecondary,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEEF2FF), // Indigo 50
-                  borderRadius: BorderRadius.circular(16),
+                  color: AppColors.primaryContainer,
+                  borderRadius: AppRadius.pillRadius,
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
                 ),
                 child: const Text(
                   'Action Nudge • Deadline Awareness',
                   style: TextStyle(
                     fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF4F46E5), // Indigo 600
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryLight,
                   ),
                 ),
               ),
@@ -398,30 +393,34 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
 
         // Main Login Action Card
-        Card(
-          elevation: 0,
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-            side: BorderSide(color: Colors.grey.shade200),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.cardSurface,
+            borderRadius: BorderRadius.circular(AppRadius.xxl),
+            border: Border.all(color: AppColors.cardBorder),
+            boxShadow: AppShadows.card,
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Primary Action: LINE Login
-                FilledButton.icon(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Primary Action: LINE Login
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppRadius.buttonRadius),
+                  boxShadow: AppShadows.lineGlow,
+                ),
+                child: FilledButton.icon(
                   onPressed: _handleLineLogin,
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF06C755), // LINE Official Green
+                    backgroundColor: AppColors.lineGreen,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(AppRadius.buttonRadius),
                     ),
                     elevation: 0,
                   ),
@@ -435,57 +434,58 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'เชื่อมต่อบัญชีเพื่อรับการแจ้งเตือน Action Nudge ผ่าน LINE OA',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'เชื่อมต่อบัญชีเพื่อรับการแจ้งเตือน Action Nudge ผ่าน LINE OA',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
 
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(child: Divider(color: Colors.grey.shade200)),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                      child: Text(
-                        'หรือ',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
-                      ),
-                    ),
-                    Expanded(child: Divider(color: Colors.grey.shade200)),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // Secondary Action: Guest Mode
-                OutlinedButton.icon(
-                  onPressed: _handleGuestLogin,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF334155),
-                    side: BorderSide(color: Colors.grey.shade300),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+              const SizedBox(height: 20),
+              const Row(
+                children: [
+                  Expanded(child: Divider(color: AppColors.cardBorder)),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12.0),
+                    child: Text(
+                      'หรือ',
+                      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                     ),
                   ),
-                  icon: const Icon(Icons.person_outline_rounded, size: 20),
-                  label: const Text(
-                    'ใช้งานแบบไม่ผูกบัญชี (Guest Mode)',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  Expanded(child: Divider(color: AppColors.cardBorder)),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Secondary Action: Guest Mode
+              OutlinedButton.icon(
+                onPressed: _handleGuestLogin,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.textPrimary,
+                  backgroundColor: AppColors.cardSurfaceElevated,
+                  side: const BorderSide(color: AppColors.cardBorderGlow),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.buttonRadius),
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  'สร้างและจัดการงานได้ทันที ข้อมูลจะผูกกับอุปกรณ์นี้ (ADR-0001)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                icon: const Icon(Icons.person_outline_rounded, size: 20),
+                label: const Text(
+                  'ใช้งานแบบไม่ผูกบัญชี (Guest Mode)',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'สร้างและจัดการงานได้ทันที ข้อมูลจะผูกกับอุปกรณ์นี้ (ADR-0001)',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+              ),
+            ],
           ),
         ),
 
@@ -494,38 +494,38 @@ class _LoginScreenState extends State<LoginScreen> {
         // Developer / Testing Mode Panel
         Card(
           elevation: 0,
-          color: Colors.white,
+          color: AppColors.cardSurface,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: Colors.grey.shade200),
+            borderRadius: BorderRadius.circular(AppRadius.cardRadius),
+            side: const BorderSide(color: AppColors.cardBorder),
           ),
           child: Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(
-              leading: Icon(
+              leading: const Icon(
                 Icons.code_rounded,
-                color: Colors.amber.shade800,
+                color: AppColors.amber,
                 size: 22,
               ),
-              title: Text(
+              title: const Text(
                 'โหมดนักพัฒนา (Dev / Test Mode)',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: Colors.grey.shade800,
+                  color: AppColors.textPrimary,
                 ),
               ),
-              subtitle: Text(
+              subtitle: const Text(
                 'จำลอง LINE Login บน Localhost / Windows',
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
               ),
               childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               children: [
-                const Divider(height: 1),
+                const Divider(height: 1, color: AppColors.cardBorder),
                 const SizedBox(height: 12),
                 const Text(
                   'เลือกบัญชีทดสอบด่วน (1-Click Simulators):',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -538,12 +538,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 8),
+                          backgroundColor: AppColors.cardSurfaceElevated,
+                          side: const BorderSide(color: AppColors.cardBorder),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
                           ),
                         ),
-                        icon: const Icon(Icons.person, size: 16),
-                        label: const Text('User 01', style: TextStyle(fontSize: 12)),
+                        icon: const Icon(Icons.person, size: 16, color: AppColors.primaryLight),
+                        label: const Text('User 01', style: TextStyle(fontSize: 12, color: AppColors.textPrimary)),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -555,12 +557,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 8),
+                          backgroundColor: AppColors.cardSurfaceElevated,
+                          side: const BorderSide(color: AppColors.cardBorder),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
                           ),
                         ),
-                        icon: const Icon(Icons.person, size: 16),
-                        label: const Text('User 02', style: TextStyle(fontSize: 12)),
+                        icon: const Icon(Icons.person, size: 16, color: AppColors.tealLight),
+                        label: const Text('User 02', style: TextStyle(fontSize: 12, color: AppColors.textPrimary)),
                       ),
                     ),
                   ],
@@ -573,14 +577,25 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _devLineIdController,
                         decoration: InputDecoration(
                           labelText: 'Custom LINE User ID',
+                          labelStyle: const TextStyle(color: AppColors.textSecondary),
                           isDense: true,
+                          fillColor: AppColors.cardSurfaceElevated,
                           contentPadding:
                               const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                            borderSide: const BorderSide(color: AppColors.cardBorder),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                            borderSide: const BorderSide(color: AppColors.cardBorder),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                            borderSide: const BorderSide(color: AppColors.primary),
                           ),
                         ),
-                        style: const TextStyle(fontSize: 12),
+                        style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -590,13 +605,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         displayName: 'Custom Dev User',
                       ),
                       style: FilledButton.styleFrom(
-                        backgroundColor: Colors.amber.shade700,
+                        backgroundColor: AppColors.amber,
+                        foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
                         ),
                       ),
-                      child: const Text('เข้าสู่ระบบ', style: TextStyle(fontSize: 12)),
+                      child: const Text('เข้าสู่ระบบ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                     ),
                   ],
                 ),
@@ -606,10 +622,10 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
 
         const SizedBox(height: 24),
-        Center(
+        const Center(
           child: Text(
             'Nudge: Behavioral Productivity System',
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
+            style: TextStyle(fontSize: 11, color: AppColors.textMuted),
           ),
         ),
       ],

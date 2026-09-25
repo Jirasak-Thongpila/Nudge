@@ -5,6 +5,7 @@ import '../models/user.dart';
 import '../services/api_client.dart';
 import '../services/liff_service.dart';
 import '../services/notification_service.dart';
+import '../theme/app_theme.dart';
 import 'add_task_screen.dart';
 import 'task_list_screen.dart';
 import 'focus_timer_screen.dart';
@@ -99,47 +100,87 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildSummaryStats(DashboardData data) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildStatItem('งานที่ต้องทำ', '${data.totalActive}', Colors.indigo),
-          Container(height: 30, width: 1, color: Colors.grey.shade300),
-          _buildStatItem(
-            'อาจกำลังเลี่ยง',
-            '${data.potentiallyAvoidedCount}',
-            data.potentiallyAvoidedCount > 0 ? Colors.orange.shade800 : Colors.grey,
+    return Row(
+      children: [
+        Expanded(
+          child: _buildModernStatCard(
+            label: 'งานที่ต้องทำ',
+            value: '${data.totalActive}',
+            icon: Icons.assignment_outlined,
+            color: AppColors.primary,
           ),
-          Container(height: 30, width: 1, color: Colors.grey.shade300),
-          _buildStatItem('เสร็จแล้ว', '${data.completedCount}', Colors.green),
-        ],
-      ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _buildModernStatCard(
+            label: 'อาจกำลังเลี่ยง',
+            value: '${data.potentiallyAvoidedCount}',
+            icon: Icons.history_toggle_off_rounded,
+            color: data.potentiallyAvoidedCount > 0 ? AppColors.amber : AppColors.textMuted,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _buildModernStatCard(
+            label: 'เสร็จสิ้นแล้ว',
+            value: '${data.completedCount}',
+            icon: Icons.check_circle_outline_rounded,
+            color: AppColors.teal,
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildStatItem(String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: color,
+  Widget _buildModernStatCard({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+      decoration: BoxDecoration(
+        color: AppColors.cardSurface,
+        borderRadius: AppRadius.lgRadius,
+        border: Border.all(color: AppColors.cardBorder),
+        boxShadow: AppShadows.card,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: AppRadius.smRadius,
+              border: Border.all(color: color.withValues(alpha: 0.2)),
+            ),
+            child: Icon(icon, size: 18, color: color),
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-        ),
-      ],
+          const SizedBox(height: 10),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: color,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textSecondary,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 
@@ -147,49 +188,73 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final rec = data.recommended;
     if (rec == null) {
       final hasCompleted = data.completedCount > 0;
-      return Card(
-        elevation: 1,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        color: hasCompleted ? const Color(0xFFF0FDF4) : Colors.white,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-          child: Column(
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: hasCompleted ? const Color(0xFFDCFCE7) : const Color(0xFFEEF2FF),
+      return Container(
+        decoration: BoxDecoration(
+          color: AppColors.cardSurface,
+          borderRadius: AppRadius.xlRadius,
+          border: Border.all(
+            color: hasCompleted ? AppColors.teal.withValues(alpha: 0.4) : AppColors.cardBorderGlow,
+          ),
+          boxShadow: AppShadows.cardHover,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 36.0),
+        child: Column(
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: (hasCompleted ? AppColors.teal : AppColors.primary).withValues(alpha: 0.15),
+                border: Border.all(
+                  color: (hasCompleted ? AppColors.teal : AppColors.primary).withValues(alpha: 0.3),
+                  width: 1.5,
                 ),
-                child: Icon(
-                  hasCompleted ? Icons.celebration_rounded : Icons.spa_outlined,
-                  size: 36,
-                  color: hasCompleted ? const Color(0xFF16A34A) : const Color(0xFF6366F1),
-                ),
+                boxShadow: hasCompleted ? AppShadows.mintGlow : AppShadows.primaryGlow,
               ),
-              const SizedBox(height: 16),
-              Text(
-                hasCompleted ? 'ยอดเยี่ยมมาก! วันนี้ไม่มีงานค้างแล้ว 🎉' : 'เริ่มต้นอย่างสบายใจ ไม่มีแรงกดดัน 🌱',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
+              child: Icon(
+                hasCompleted ? Icons.celebration_rounded : Icons.spa_rounded,
+                size: 38,
+                color: hasCompleted ? AppColors.teal : AppColors.primaryLight,
               ),
-              const SizedBox(height: 8),
-              Text(
-                hasCompleted
-                    ? 'คุณได้จัดการงานที่สำคัญเรียบร้อย พักผ่อนได้อย่างสบายใจ โดยไม่ต้องกังวล'
-                    : 'Nudge พร้อมช่วยคุณเริ่มจัดการงานทีละนิด เริ่มสร้าง Task แรกของคุณได้เลย',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey.shade600, height: 1.4, fontSize: 13),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              hasCompleted ? 'ยอดเยี่ยมมาก! วันนี้ไม่มีงานค้างแล้ว 🎉' : 'เริ่มต้นอย่างสบายใจ ไม่มีแรงกดดัน 🌱',
+              style: const TextStyle(
+                fontSize: 19,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.3,
               ),
-              const SizedBox(height: 20),
-              FilledButton.icon(
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              hasCompleted
+                  ? 'คุณได้จัดการงานที่สำคัญเรียบร้อย พักผ่อนได้อย่างสบายใจ โดยไม่ต้องกังวล'
+                  : 'Nudge พร้อมช่วยคุณเริ่มจัดการงานทีละนิด เริ่มสร้าง Task แรกของคุณได้เลย',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textSecondary, height: 1.5, fontSize: 13.5),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: AppRadius.mdRadius,
+                boxShadow: AppShadows.primaryGlow,
+              ),
+              child: FilledButton.icon(
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF6366F1),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: AppRadius.mdRadius),
                 ),
-                icon: const Icon(Icons.add, size: 18),
-                label: Text(hasCompleted ? 'เพิ่ม Task ใหม่' : 'สร้าง Task แรก'),
+                icon: const Icon(Icons.add_rounded, size: 20),
+                label: Text(
+                  hasCompleted ? 'เพิ่ม Task ใหม่' : 'สร้าง Task แรก',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
                 onPressed: () async {
                   final created = await Navigator.push<bool>(
                     context,
@@ -202,8 +267,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   }
                 },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
@@ -211,183 +276,244 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final task = rec.task;
     final isUrgent = task.daysRemaining <= 1;
 
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: task.isPotentiallyAvoided ? Colors.amber.shade300 : Colors.indigo.shade100,
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardSurfaceElevated,
+        borderRadius: AppRadius.xlRadius,
+        border: Border.all(
+          color: task.isPotentiallyAvoided
+              ? AppColors.amber.withValues(alpha: 0.5)
+              : AppColors.primary.withValues(alpha: 0.4),
           width: 1.5,
         ),
+        boxShadow: AppShadows.cardHover,
       ),
-      color: task.isPotentiallyAvoided ? const Color(0xFFFFFDF5) : Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
+      child: ClipRRect(
+        borderRadius: AppRadius.xlRadius,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isUrgent ? Colors.red.shade50 : Colors.indigo.shade50,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.star_rounded,
-                        size: 16,
-                        color: isUrgent ? Colors.red.shade700 : Colors.indigo,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        isUrgent ? '🔴 ควรเริ่มวันนี้' : '⚡ แนะนำให้เริ่มตอนนี้',
-                        style: TextStyle(
-                          color: isUrgent ? Colors.red.shade800 : Colors.indigo.shade800,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  'Priority: ${task.priorityScore}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                IconButton(
-                  icon: const Icon(Icons.info_outline_rounded, size: 20, color: Color(0xFF6366F1)),
-                  visualDensity: VisualDensity.compact,
-                  tooltip: 'ดูรายละเอียด',
-                  onPressed: () => _openTaskDetail(task),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: () => _openTaskDetail(task),
-              child: Text(
-                task.title,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  height: 1.2,
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-                _buildChip(
-                  task.daysRemaining < 0
-                      ? 'เกินกำหนด ${-task.daysRemaining} วัน'
-                      : task.daysRemaining == 0
-                          ? 'ครบกำหนดวันนี้'
-                          : 'เหลืออีก ${task.daysRemaining} วัน',
-                  task.daysRemaining <= 1 ? Colors.red.shade700 : Colors.indigo.shade700,
-                  task.daysRemaining <= 1 ? Colors.red.shade50 : Colors.indigo.shade50,
-                ),
-                _buildChip(
-                  'สำคัญ: ${task.importance}/5',
-                  Colors.amber.shade900,
-                  Colors.amber.shade50,
-                ),
-                if (task.postponeCount > 0)
-                  _buildChip(
-                    'ถูกเลื่อน ${task.postponeCount} ครั้ง',
-                    Colors.grey.shade800,
-                    Colors.grey.shade100,
-                  ),
-              ],
-            ),
-            if (task.isPotentiallyAvoided) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.warning_amber_rounded, size: 16, color: Colors.orange.shade900),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        '⚠️ อาจกำลังถูกเลื่อนซ้ำ (Potentially Avoided)',
-                        style: TextStyle(
-                          color: Colors.orange.shade900,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 14),
+            // Top Accent Bar with Dark Gradient
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF5F3FF),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFDDD6FE)),
+                gradient: LinearGradient(
+                  colors: task.isPotentiallyAvoided
+                      ? [const Color(0xFF241607), AppColors.cardSurfaceElevated]
+                      : [const Color(0xFF1E1B4B), AppColors.cardSurfaceElevated],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.lightbulb_outline_rounded, color: Color(0xFF7C3AED), size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isUrgent
+                          ? AppColors.rose
+                          : (task.isPotentiallyAvoided ? AppColors.amber : AppColors.primary),
+                      borderRadius: AppRadius.pillRadius,
+                      boxShadow: isUrgent ? [
+                        BoxShadow(
+                          color: AppColors.rose.withValues(alpha: 0.4),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        )
+                      ] : null,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.bolt_rounded,
+                          size: 15,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          isUrgent ? 'ควรเริ่มวันนี้' : 'แนะนำให้เริ่มตอนนี้',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.cardSurface,
+                      borderRadius: AppRadius.pillRadius,
+                      border: Border.all(color: AppColors.cardBorder),
+                    ),
                     child: Text(
-                      rec.adaptiveNudgeMessage,
+                      'Priority: ${task.priorityScore}',
                       style: const TextStyle(
-                        color: Color(0xFF5B21B6),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
                       ),
                     ),
+                  ),
+                  const SizedBox(width: 6),
+                  IconButton(
+                    icon: const Icon(Icons.info_outline_rounded, size: 20, color: AppColors.primaryLight),
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'ดูรายละเอียด',
+                    onPressed: () => _openTaskDetail(task),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 10),
-            Text(
-              rec.recommendationReason,
-              style: TextStyle(
-                color: Colors.grey.shade700,
-                fontSize: 13,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-            const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: FilledButton.icon(
-                onPressed: () => _onStartFocusSession(task),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF6366F1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+
+            // Card Body
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                    onTap: () => _openTaskDetail(task),
+                    child: Text(
+                      task.title,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        height: 1.25,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
                   ),
-                ),
-                icon: const Icon(Icons.timer),
-                label: const Text(
-                  'เริ่ม 10 นาที',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      _buildChip(
+                        task.daysRemaining < 0
+                            ? 'เกินกำหนด ${-task.daysRemaining} วัน'
+                            : task.daysRemaining == 0
+                                ? 'ครบกำหนดวันนี้'
+                                : 'เหลืออีก ${task.daysRemaining} วัน',
+                        task.daysRemaining <= 1 ? AppColors.roseLight : AppColors.primaryLight,
+                        icon: Icons.calendar_today_rounded,
+                      ),
+                      _buildChip(
+                        'ความสำคัญ ${task.importance}/5',
+                        AppColors.amberLight,
+                        icon: Icons.star_rounded,
+                      ),
+                      if (task.estimatedMinutes > 0)
+                        _buildChip(
+                          '${task.estimatedMinutes} นาที',
+                          AppColors.textSecondary,
+                          icon: Icons.schedule_rounded,
+                        ),
+                      if (task.postponeCount > 0)
+                        _buildChip(
+                          'เลื่อนแล้ว ${task.postponeCount} ครั้ง',
+                          AppColors.textSecondary,
+                          icon: Icons.refresh_rounded,
+                        ),
+                    ],
+                  ),
+                  if (task.isPotentiallyAvoided) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF231608),
+                        borderRadius: AppRadius.mdRadius,
+                        border: Border.all(color: AppColors.amber.withValues(alpha: 0.4)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.support_agent_rounded, size: 18, color: AppColors.amberLight),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'กำลังถูกเลื่อนซ้ำ — ลองเริ่มแค่ 10 นาทีเพื่อคลายความกังวล',
+                              style: TextStyle(
+                                color: AppColors.amberLight,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF14172B),
+                      borderRadius: AppRadius.mdRadius,
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.format_quote_rounded, color: AppColors.primaryLight, size: 22),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            rec.adaptiveNudgeMessage,
+                            style: const TextStyle(
+                              color: Color(0xFFE0E7FF),
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    rec.recommendationReason,
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 12.5,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    width: double.infinity,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      borderRadius: AppRadius.mdRadius,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF4F46E5), Color(0xFF6366F1)],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      boxShadow: AppShadows.primaryGlow,
+                    ),
+                    child: ElevatedButton.icon(
+                      onPressed: () => _onStartFocusSession(task),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(borderRadius: AppRadius.mdRadius),
+                      ),
+                      icon: const Icon(Icons.play_circle_filled_rounded, size: 22),
+                      label: const Text(
+                        'เริ่ม 10 นาที (Focus Session)',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -396,20 +522,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildChip(String text, Color textColor, Color bgColor) {
+  Widget _buildChip(String text, Color textColor, {IconData? icon}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(6),
+        color: AppColors.cardSurface,
+        borderRadius: AppRadius.pillRadius,
+        border: Border.all(color: textColor.withValues(alpha: 0.25)),
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: textColor,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 13, color: textColor),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            text,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -422,43 +558,146 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         Row(
           children: [
-            Icon(icon, size: 18, color: Colors.grey.shade700),
-            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.primaryContainer,
+                borderRadius: AppRadius.smRadius,
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+              ),
+              child: Icon(icon, size: 16, color: AppColors.primaryLight),
+            ),
+            const SizedBox(width: 8),
             Text(
               title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.2,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.cardSurfaceElevated,
+                borderRadius: AppRadius.pillRadius,
+                border: Border.all(color: AppColors.cardBorder),
+              ),
+              child: Text(
+                '${tasks.length}',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textSecondary,
+                ),
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         ...tasks.map(
-          (t) => Card(
-            elevation: 1,
-            margin: const EdgeInsets.only(bottom: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-              side: BorderSide(color: Colors.grey.shade200),
+          (t) => Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            decoration: BoxDecoration(
+              color: AppColors.cardSurface,
+              borderRadius: AppRadius.lgRadius,
+              border: Border.all(color: AppColors.cardBorder),
+              boxShadow: AppShadows.card,
             ),
-            child: ListTile(
-              onTap: () => _openTaskDetail(t),
-              title: Text(
-                t.title,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              subtitle: Text(
-                t.daysRemaining < 0
-                    ? 'เกินกำหนด ${-t.daysRemaining} วัน'
-                    : t.daysRemaining == 0
-                        ? 'ครบกำหนดวันนี้'
-                        : 'เหลืออีก ${t.daysRemaining} วัน • สำคัญ: ${t.importance}/5',
-                style: TextStyle(
-                  color: t.daysRemaining <= 1 ? Colors.red.shade700 : Colors.grey.shade600,
-                  fontSize: 12,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: AppRadius.lgRadius,
+                onTap: () => _openTaskDetail(t),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: t.daysRemaining <= 1
+                              ? AppColors.rose.withValues(alpha: 0.15)
+                              : AppColors.primary.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: t.daysRemaining <= 1
+                                ? AppColors.rose.withValues(alpha: 0.3)
+                                : AppColors.primary.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Icon(
+                          t.isCompleted
+                              ? Icons.check_circle_rounded
+                              : (t.daysRemaining <= 1 ? Icons.alarm_rounded : Icons.task_alt_rounded),
+                          color: t.daysRemaining <= 1 ? AppColors.roseLight : AppColors.primaryLight,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              t.title,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                                color: t.isCompleted ? AppColors.textMuted : AppColors.textPrimary,
+                                decoration: t.isCompleted ? TextDecoration.lineThrough : null,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Text(
+                                  t.daysRemaining < 0
+                                      ? 'เกินกำหนด ${-t.daysRemaining} วัน'
+                                      : t.daysRemaining == 0
+                                          ? 'ครบกำหนดวันนี้'
+                                          : 'เหลือ ${t.daysRemaining} วัน',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: t.daysRemaining <= 1 ? AppColors.roseLight : AppColors.textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  width: 3,
+                                  height: 3,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.cardBorderGlow,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '⭐ ${t.importance}/5',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.play_circle_outline_rounded, color: AppColors.primaryLight, size: 28),
+                        tooltip: 'เริ่มโฟกัส 10 นาที',
+                        onPressed: () => _onStartFocusSession(t),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              trailing: TextButton(
-                onPressed: () => _onStartFocusSession(t),
-                child: const Text('เริ่ม 10 นาที'),
               ),
             ),
           ),
@@ -509,6 +748,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     showModalBottomSheet(
       context: context,
+      backgroundColor: AppColors.cardSurfaceElevated,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -527,10 +767,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.indigo.shade50,
+                            color: AppColors.primaryContainer,
                             borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
                           ),
-                          child: const Icon(Icons.notifications_active, color: Color(0xFF6366F1)),
+                          child: const Icon(Icons.notifications_active, color: AppColors.primaryLight),
                         ),
                         const SizedBox(width: 12),
                         const Expanded(
@@ -539,11 +780,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             children: [
                               Text(
                                 'ศูนย์แจ้งเตือนอัจฉริยะ (Smart Nudge)',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                               ),
                               Text(
                                 'แจ้งเตือนคู่ขนานผ่าน LINE OA และระบบอุปกรณ์',
-                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                               ),
                             ],
                           ),
@@ -557,9 +798,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEEF2FF),
+                          color: const Color(0xFF14172B),
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFFC7D2FE)),
+                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -571,14 +812,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF4338CA),
+                                    color: AppColors.primaryLight,
                                   ),
                                 ),
                                 const Spacer(),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF4F46E5),
+                                    color: AppColors.primary,
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Text(
@@ -598,13 +839,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF1E1B4B),
+                                color: AppColors.textPrimary,
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               decision['reasonText'] ?? '',
-                              style: const TextStyle(fontSize: 13, color: Color(0xFF475569)),
+                              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
                             ),
                             const SizedBox(height: 6),
                             Text(
@@ -612,7 +853,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF4338CA),
+                                color: Color(0xFFC7D2FE),
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -622,7 +863,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 icon: const Icon(Icons.play_arrow_rounded, size: 18),
                                 label: const Text('เริ่ม 10 นาทีเลย'),
                                 style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xFF4F46E5),
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
                                 ),
                                 onPressed: () {
                                   Navigator.pop(ctx);
@@ -655,16 +897,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
+                        color: AppColors.cardSurface,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade200),
+                        border: Border.all(color: AppColors.cardBorder),
                       ),
                       child: const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             '🗓️ รูปแบบการแจ้งเตือน (Smart Cadence)',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
                           ),
                           SizedBox(height: 6),
                           Text(
@@ -673,7 +915,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             '• งานที่ถูกเลื่อน: จะแนะนำก้าวเริ่มต้น 10 นาที เพื่อลดแรงต้าน',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Color(0xFF64748B),
+                              color: AppColors.textSecondary,
                               height: 1.4,
                             ),
                           ),
@@ -690,6 +932,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             icon: Icon(
                               hasPerm ? Icons.notifications_active : Icons.notifications_none,
                               size: 18,
+                              color: AppColors.textSecondary,
                             ),
                             label: Text(
                               hasPerm ? 'เปิดแจ้งเตือนแล้ว' : 'ขอสิทธิ์แจ้งเตือน',
@@ -746,54 +989,126 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.bgCanvas,
       appBar: AppBar(
-        title: const Text('Nudge'),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF4F46E5), Color(0xFF6366F1)],
+                ),
+                borderRadius: AppRadius.smRadius,
+                boxShadow: AppShadows.primaryGlow,
+              ),
+              child: const Icon(
+                Icons.psychology_alt_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'Nudge',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 20,
+                letterSpacing: -0.5,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
         actions: [
-          IconButton(
-            icon: Stack(
-              children: [
-                const Icon(Icons.notifications_outlined),
-                if (_nudgePreview?['decision'] != null)
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: AppColors.cardSurface,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.cardBorder),
+            ),
+            child: IconButton(
+              icon: Stack(
+                children: [
+                  const Icon(Icons.notifications_outlined, size: 20, color: AppColors.textSecondary),
+                  if (_nudgePreview?['decision'] != null)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: AppColors.rose,
+                          shape: BoxShape.circle,
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
+              tooltip: 'ศูนย์แจ้งเตือน Nudge',
+              onPressed: _showNotificationCenter,
             ),
-            tooltip: 'ศูนย์แจ้งเตือน Nudge',
-            onPressed: _showNotificationCenter,
           ),
-          IconButton(
-            icon: const Icon(Icons.format_list_bulleted),
-            tooltip: 'ดู Task ทั้งหมด',
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => TaskListScreen(
-                    apiClient: widget.apiClient,
-                    user: widget.user,
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: AppColors.cardSurface,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.cardBorder),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.format_list_bulleted_rounded, size: 20, color: AppColors.textSecondary),
+              tooltip: 'ดู Task ทั้งหมด',
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => TaskListScreen(
+                      apiClient: widget.apiClient,
+                      user: widget.user,
+                    ),
                   ),
-                ),
-              );
-              _fetchDashboard();
-            },
+                );
+                _fetchDashboard();
+              },
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'รีเฟรช',
-            onPressed: _fetchDashboard,
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: AppColors.cardSurface,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.cardBorder),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.refresh_rounded, size: 20, color: AppColors.textSecondary),
+              tooltip: 'รีเฟรช',
+              onPressed: _fetchDashboard,
+            ),
           ),
           PopupMenuButton<String>(
-            icon: const Icon(Icons.account_circle_outlined),
+            color: AppColors.cardSurfaceElevated,
+            icon: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: widget.user.lineUserId != null
+                    ? AppColors.lineGreen.withValues(alpha: 0.15)
+                    : AppColors.primaryContainer,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: widget.user.lineUserId != null ? AppColors.lineGreen : AppColors.primary,
+                  width: 1.5,
+                ),
+              ),
+              child: Icon(
+                widget.user.lineUserId != null ? Icons.chat_bubble_rounded : Icons.person_rounded,
+                size: 18,
+                color: widget.user.lineUserId != null ? AppColors.lineGreen : AppColors.primaryLight,
+              ),
+            ),
             tooltip: 'บัญชีผู้ใช้',
             onSelected: (value) {
               if (value == 'logout') {
@@ -808,19 +1123,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      widget.user.lineUserId != null
-                          ? 'LINE Connected'
-                          : 'Guest User',
+                      widget.user.lineUserId != null ? 'LINE Connected' : 'Guest User',
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       widget.user.lineUserId ?? 'ID #${widget.user.id}',
-                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                      style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
                     ),
                   ],
                 ),
@@ -830,14 +1143,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 value: 'logout',
                 child: Row(
                   children: [
-                    Icon(Icons.logout, size: 18, color: Colors.red),
+                    Icon(Icons.logout_rounded, size: 18, color: AppColors.rose),
                     SizedBox(width: 8),
-                    Text('ออกจากระบบ', style: TextStyle(color: Colors.red)),
+                    Text('ออกจากระบบ', style: TextStyle(color: AppColors.rose)),
                   ],
                 ),
               ),
             ],
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: _isLoading
@@ -849,9 +1163,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                        const Icon(Icons.error_outline, size: 48, color: AppColors.rose),
                         const SizedBox(height: 12),
-                        Text(_errorMessage!, textAlign: TextAlign.center),
+                        Text(_errorMessage!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
                         const SizedBox(height: 16),
                         FilledButton(
                           onPressed: _fetchDashboard,
@@ -863,46 +1177,87 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 )
               : RefreshIndicator(
                   onRefresh: _fetchDashboard,
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildSummaryStats(_dashboardData!),
-                        const SizedBox(height: 16),
-                        _buildRecommendationHero(_dashboardData!),
-                        const SizedBox(height: 24),
-                        _buildTaskListSection(
-                          'งานถัดไป (Next)',
-                          _dashboardData!.next,
-                          icon: Icons.arrow_forward_rounded,
+                  color: AppColors.primary,
+                  child: Stack(
+                    children: [
+                      // Ambient Cyber-Zen radial glow behind hero
+                      Positioned(
+                        top: -80,
+                        left: 0,
+                        right: 0,
+                        height: 320,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: RadialGradient(
+                              center: Alignment.topCenter,
+                              radius: 1.0,
+                              colors: [
+                                AppColors.primary.withValues(alpha: 0.12),
+                                AppColors.teal.withValues(alpha: 0.04),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
                         ),
-                        const SizedBox(height: 16),
-                        _buildTaskListSection(
-                          'งานที่ยังไม่เร่งด่วน (Later)',
-                          _dashboardData!.later,
-                          icon: Icons.access_time_rounded,
+                      ),
+                      SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildSummaryStats(_dashboardData!),
+                            const SizedBox(height: 16),
+                            _buildRecommendationHero(_dashboardData!),
+                            const SizedBox(height: 24),
+                            _buildTaskListSection(
+                              'งานถัดไป (Next)',
+                              _dashboardData!.next,
+                              icon: Icons.arrow_forward_rounded,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildTaskListSection(
+                              'งานที่ยังไม่เร่งด่วน (Later)',
+                              _dashboardData!.later,
+                              icon: Icons.access_time_rounded,
+                            ),
+                            const SizedBox(height: 40),
+                          ],
                         ),
-                        const SizedBox(height: 40),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final created = await Navigator.push<bool>(
-            context,
-            MaterialPageRoute(
-              builder: (_) => AddTaskScreen(apiClient: widget.apiClient),
-            ),
-          );
-          if (created == true) {
-            _fetchDashboard();
-          }
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('เพิ่ม Task'),
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          borderRadius: AppRadius.pillRadius,
+          gradient: const LinearGradient(
+            colors: [Color(0xFF4F46E5), Color(0xFF6366F1)],
+          ),
+          boxShadow: AppShadows.primaryGlow,
+        ),
+        child: FloatingActionButton.extended(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          highlightElevation: 0,
+          foregroundColor: Colors.white,
+          onPressed: () async {
+            final created = await Navigator.push<bool>(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AddTaskScreen(apiClient: widget.apiClient),
+              ),
+            );
+            if (created == true) {
+              _fetchDashboard();
+            }
+          },
+          icon: const Icon(Icons.add_rounded, size: 22),
+          label: const Text(
+            'เพิ่ม Task',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+          ),
+        ),
       ),
     );
   }

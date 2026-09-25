@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/api_client.dart';
 import '../services/audio_recorder.dart';
+import '../theme/app_theme.dart';
 
 class AddTaskScreen extends StatefulWidget {
   final ApiClient apiClient;
@@ -359,8 +360,16 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
 
     return Scaffold(
+      backgroundColor: AppColors.bgCanvas,
       appBar: AppBar(
-        title: const Text('เพิ่ม Task ใหม่'),
+        title: const Text(
+          'เพิ่ม Task ใหม่',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
+          ),
+        ),
         centerTitle: false,
       ),
       body: SingleChildScrollView(
@@ -374,18 +383,18 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.red.shade200),
+                  color: const Color(0xFF2E1015),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  border: Border.all(color: AppColors.rose.withValues(alpha: 0.4)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.error_outline, color: Colors.red),
+                    const Icon(Icons.error_outline_rounded, color: AppColors.roseLight),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _errorMessage!,
-                        style: const TextStyle(color: Colors.red, fontSize: 13),
+                        style: const TextStyle(color: AppColors.roseLight, fontSize: 13),
                       ),
                     ),
                   ],
@@ -395,24 +404,25 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
             // 1. Smart AI Box (LINE-style)
             Card(
-              elevation: 2,
+              elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: Colors.indigo.shade100, width: 1.5),
+                borderRadius: BorderRadius.circular(AppRadius.cardRadius),
+                side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4), width: 1.5),
               ),
               child: Container(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  gradient: LinearGradient(
+                  borderRadius: BorderRadius.circular(AppRadius.cardRadius),
+                  gradient: const LinearGradient(
                     colors: [
-                      Colors.indigo.shade50.withValues(alpha: 0.6),
-                      Colors.white,
+                      Color(0xFF1E1B4B),
+                      AppColors.cardSurface,
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
+                  boxShadow: AppShadows.card,
                 ),
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(18.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -421,12 +431,15 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF6366F1),
-                            borderRadius: BorderRadius.circular(10),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF4F46E5), Color(0xFF6366F1)],
+                            ),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                            boxShadow: AppShadows.primaryGlow,
                           ),
                           child: const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
                         const Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -434,14 +447,14 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                               Text(
                                 'บันทึกด่วนด้วย AI (แบบ LINE)',
                                 style: TextStyle(
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w800,
                                   fontSize: 16,
-                                  color: Color(0xFF1E293B),
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
                               Text(
                                 'พิมพ์ข้อความหรือกดไมค์พูดภาษาไทยได้ทันที',
-                                style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                               ),
                             ],
                           ),
@@ -455,9 +468,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         decoration: BoxDecoration(
-                          color: Colors.red.shade50,
+                          color: const Color(0xFF2E1015),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.red.shade200),
+                          border: Border.all(color: AppColors.rose.withValues(alpha: 0.5)),
                         ),
                         child: Row(
                           children: [
@@ -466,7 +479,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                               height: 12,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Colors.red,
+                                color: AppColors.roseLight,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -474,17 +487,17 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                               child: Text(
                                 'กำลังฟังเสียงพูด... (${_recordingSeconds}s)',
                                 style: const TextStyle(
-                                  color: Colors.red,
+                                  color: AppColors.roseLight,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
                             TextButton.icon(
                               onPressed: _toggleRecording,
-                              icon: const Icon(Icons.stop, color: Colors.red, size: 18),
+                              icon: const Icon(Icons.stop, color: AppColors.roseLight, size: 18),
                               label: const Text(
                                 'เสร็จสิ้น',
-                                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                                style: TextStyle(color: AppColors.roseLight, fontWeight: FontWeight.bold),
                               ),
                             ),
                           ],
@@ -501,23 +514,24 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                       minLines: 1,
                       textInputAction: TextInputAction.send,
                       onSubmitted: (_) => _processQuickAddText(),
+                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
                       decoration: InputDecoration(
                         hintText: 'เช่น พรุ่งนี้ 9 โมงส่งรายงานวิจัย 4 ดาว 45 นาที',
-                        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: AppColors.cardSurfaceElevated,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(AppRadius.buttonRadius),
+                          borderSide: const BorderSide(color: AppColors.cardBorder),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(AppRadius.buttonRadius),
+                          borderSide: const BorderSide(color: AppColors.cardBorder),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+                          borderRadius: BorderRadius.circular(AppRadius.buttonRadius),
+                          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
                         ),
                         suffixIcon: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -526,7 +540,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                             IconButton(
                               icon: Icon(
                                 _isRecording ? Icons.stop_circle : Icons.mic_rounded,
-                                color: _isRecording ? Colors.red : const Color(0xFF6366F1),
+                                color: _isRecording ? AppColors.roseLight : AppColors.primaryLight,
                               ),
                               tooltip: _isRecording ? 'หยุดบันทึก' : 'พูดเพื่อบันทึกงาน',
                               onPressed: _isProcessingAI ? null : _toggleRecording,
@@ -537,11 +551,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                                   ? const SizedBox(
                                       width: 20,
                                       height: 20,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryLight),
                                     )
                                   : const Icon(
                                       Icons.arrow_upward_rounded,
-                                      color: Color(0xFF6366F1),
+                                      color: AppColors.primaryLight,
                                     ),
                               tooltip: 'ส่งเพื่อสร้าง Task',
                               onPressed: (_isProcessingAI || _isRecording)
@@ -559,14 +573,14 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                       'ตัวอย่างคำสั่งด่วน:',
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF64748B),
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
-                      runSpacing: 6,
+                      runSpacing: 8,
                       children: [
                         'พรุ่งนี้ 9 โมงส่งรายงาน 4 ดาว',
                         'ส่งมินิโปรเจกต์วันศุกร์ 5 ดาว',
@@ -574,11 +588,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         'ทำการบ้าน 30 นาที',
                       ].map((sample) {
                         return ActionChip(
-                          avatar: const Icon(Icons.flash_on, size: 14, color: Color(0xFF6366F1)),
-                          label: Text(sample, style: const TextStyle(fontSize: 12)),
-                          backgroundColor: Colors.white,
-                          side: BorderSide(color: Colors.indigo.shade100),
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          avatar: const Icon(Icons.flash_on_rounded, size: 14, color: AppColors.primaryLight),
+                          label: Text(sample, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                          backgroundColor: AppColors.cardSurfaceElevated,
+                          side: const BorderSide(color: AppColors.cardBorder),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           onPressed: (_isProcessingAI || _isRecording)
                               ? null
                               : () {
@@ -593,31 +607,31 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // 2. Expandable Accordion for Manual Details
             Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: Colors.grey.shade200),
+                borderRadius: BorderRadius.circular(AppRadius.cardRadius),
+                side: const BorderSide(color: AppColors.cardBorder),
               ),
-              color: Colors.grey.shade50,
+              color: AppColors.cardSurface,
               child: Theme(
                 data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                 child: ExpansionTile(
-                  leading: const Icon(Icons.tune_rounded, color: Color(0xFF64748B)),
+                  leading: const Icon(Icons.tune_rounded, color: AppColors.primaryLight),
                   title: const Text(
                     'หรือกรอกแบบฟอร์มละเอียด (Manual Input)',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF475569),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   subtitle: const Text(
                     'กำหนดวัน เวลา และคะแนนความสำคัญด้วยตัวเอง',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                   children: [
                     Padding(
@@ -629,11 +643,21 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                           children: [
                             TextFormField(
                               controller: _titleController,
-                              decoration: const InputDecoration(
+                              style: const TextStyle(color: AppColors.textPrimary),
+                              decoration: InputDecoration(
                                 labelText: 'ชื่องาน (Task Title)',
+                                labelStyle: const TextStyle(color: AppColors.textSecondary),
                                 hintText: 'เช่น ทำรายงานวิจัย, Mini Project',
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.task_alt),
+                                hintStyle: const TextStyle(color: AppColors.textMuted),
+                                fillColor: AppColors.cardSurfaceElevated,
+                                border: const OutlineInputBorder(),
+                                enabledBorder: const OutlineInputBorder(
+                                  borderSide: BorderSide(color: AppColors.cardBorder),
+                                ),
+                                focusedBorder: const OutlineInputBorder(
+                                  borderSide: BorderSide(color: AppColors.primary),
+                                ),
+                                prefixIcon: const Icon(Icons.task_alt, color: AppColors.textMuted),
                               ),
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
@@ -645,7 +669,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                             const SizedBox(height: 20),
                             const Text(
                               'Deadline (กำหนดส่ง)',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
                             ),
                             const SizedBox(height: 8),
                             Row(
@@ -653,7 +677,12 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                                 Expanded(
                                   child: OutlinedButton.icon(
                                     onPressed: _pickDate,
-                                    icon: const Icon(Icons.calendar_today, size: 18),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppColors.textPrimary,
+                                      backgroundColor: AppColors.cardSurfaceElevated,
+                                      side: const BorderSide(color: AppColors.cardBorder),
+                                    ),
+                                    icon: const Icon(Icons.calendar_today, size: 18, color: AppColors.primaryLight),
                                     label: Text(dateStr),
                                   ),
                                 ),
@@ -661,7 +690,12 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                                 Expanded(
                                   child: OutlinedButton.icon(
                                     onPressed: _pickTime,
-                                    icon: const Icon(Icons.access_time, size: 18),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppColors.textPrimary,
+                                      backgroundColor: AppColors.cardSurfaceElevated,
+                                      side: const BorderSide(color: AppColors.cardBorder),
+                                    ),
+                                    icon: const Icon(Icons.access_time, size: 18, color: AppColors.primaryLight),
                                     label: Text(timeStr),
                                   ),
                                 ),
@@ -670,7 +704,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                             const SizedBox(height: 20),
                             const Text(
                               'ระดับความสำคัญ (Importance)',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
                             ),
                             const SizedBox(height: 8),
                             Row(
@@ -681,7 +715,15 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                                 return ChoiceChip(
                                   label: Text('$level ⭐'),
                                   selected: isSelected,
-                                  selectedColor: Colors.indigo.shade100,
+                                  selectedColor: AppColors.primary,
+                                  backgroundColor: AppColors.cardSurfaceElevated,
+                                  labelStyle: TextStyle(
+                                    color: isSelected ? Colors.white : AppColors.textSecondary,
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  ),
+                                  side: BorderSide(
+                                    color: isSelected ? AppColors.primary : AppColors.cardBorder,
+                                  ),
                                   onSelected: (_) {
                                     setState(() {
                                       _importance = level;
@@ -693,16 +735,25 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                             const SizedBox(height: 20),
                             const Text(
                               'เวลาที่คาดว่าจะใช้ (นาที)',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
                             ),
                             const SizedBox(height: 8),
                             TextFormField(
                               controller: _estimatedMinutesController,
                               keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                border: OutlineInputBorder(),
+                              style: const TextStyle(color: AppColors.textPrimary),
+                              decoration: InputDecoration(
+                                border: const OutlineInputBorder(),
+                                enabledBorder: const OutlineInputBorder(
+                                  borderSide: BorderSide(color: AppColors.cardBorder),
+                                ),
+                                focusedBorder: const OutlineInputBorder(
+                                  borderSide: BorderSide(color: AppColors.primary),
+                                ),
+                                fillColor: AppColors.cardSurfaceElevated,
                                 suffixText: 'นาที',
-                                prefixIcon: Icon(Icons.timer_outlined),
+                                suffixStyle: const TextStyle(color: AppColors.textSecondary),
+                                prefixIcon: const Icon(Icons.timer_outlined, color: AppColors.textMuted),
                               ),
                               validator: (value) {
                                 final parsed = int.tryParse(value ?? '');
@@ -717,7 +768,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                               spacing: 8,
                               children: [15, 30, 45, 60, 120].map((mins) {
                                 return ActionChip(
-                                  label: Text('$mins นาที'),
+                                  label: Text('$mins นาที', style: const TextStyle(color: AppColors.textPrimary, fontSize: 12)),
+                                  backgroundColor: AppColors.cardSurfaceElevated,
+                                  side: const BorderSide(color: AppColors.cardBorder),
                                   onPressed: () {
                                     _estimatedMinutesController.text = mins.toString();
                                   },
@@ -725,13 +778,25 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                               }).toList(),
                             ),
                             const SizedBox(height: 24),
-                            SizedBox(
+                            Container(
                               width: double.infinity,
-                              height: 48,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(AppRadius.buttonRadius),
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF4F46E5), Color(0xFF6366F1)],
+                                ),
+                                boxShadow: AppShadows.primaryGlow,
+                              ),
                               child: FilledButton(
                                 onPressed: _isManualSubmitting ? null : _submitManual,
                                 style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xFF4F46E5),
+                                  backgroundColor: Colors.transparent,
+                                  foregroundColor: Colors.white,
+                                  shadowColor: Colors.transparent,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(AppRadius.buttonRadius),
+                                  ),
                                 ),
                                 child: _isManualSubmitting
                                     ? const SizedBox(
@@ -746,7 +811,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                                         'บันทึก Task แบบฟอร์ม',
                                         style: TextStyle(
                                           fontSize: 15,
-                                          fontWeight: FontWeight.bold,
+                                          fontWeight: FontWeight.w700,
                                         ),
                                       ),
                               ),

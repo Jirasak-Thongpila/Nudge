@@ -4,6 +4,7 @@ import 'models/user.dart';
 import 'services/api_client.dart';
 import 'services/deep_link_service.dart';
 import 'services/liff_service.dart';
+import 'theme/app_theme.dart';
 import 'screens/task_list_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/login_screen.dart';
@@ -20,13 +21,10 @@ class NudgeApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Nudge',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6366F1), // Indigo primary
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-      ),
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.dark,
       home: const LoginScreen(),
     );
   }
