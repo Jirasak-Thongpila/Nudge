@@ -595,7 +595,8 @@ describe("LINE webhook routing (real parser, no Gemini API key)", () => {
     const actions = card.quickReply?.items.map((item: any) => item.action) ?? [];
 
     expect(actions.map((action: any) => action.label)).toEqual(["เริ่ม 10 นาที", "เลื่อนไปก่อน", "ทำเสร็จแล้ว"]);
-    expect(actions[0].type).toBe("uri");
+    expect(actions[0].type).toBe("message");
+    expect(actions[0].text).toBe("เริ่ม 10 นาที #3");
     expect(actions[1].text).toBe("เลื่อนงาน #3");
     expect(actions[2].text).toBe("ปิดงาน #3");
   });

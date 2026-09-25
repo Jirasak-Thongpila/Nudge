@@ -5,6 +5,7 @@ import { TaskService, type CreateTaskInput, type TaskWithDerived } from "../src/
 import type { User, Task } from "../src/db/schema";
 import { calculateDaysRemaining } from "../src/lib/date";
 import { calculateAvoidanceScore, detectPotentiallyAvoided } from "../src/lib/avoidance";
+import { getAdaptiveNudgeMessage } from "../src/lib/priority";
 
 class MockUserService extends UserService {
   public store: User[] = [];
@@ -71,11 +72,14 @@ class MockTaskService extends TaskService {
       status: task.status,
     });
 
+    const adaptiveNudgeMessage = getAdaptiveNudgeMessage(task.postponeCount);
+
     return {
       ...task,
       daysRemaining,
       avoidanceScore,
       isPotentiallyAvoided,
+      adaptiveNudgeMessage,
     };
   }
 }

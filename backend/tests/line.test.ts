@@ -207,7 +207,7 @@ describe("LINE OA Messaging & Deep Link (Ticket 09)", () => {
       expect(body.error).toContain("User has not linked a LINE account");
     });
 
-    it("should generate Action Nudge flex message with deep link nudge://focus?taskId=...", async () => {
+    it("should generate Action Nudge flex message with in-chat focus message action", async () => {
       const user = await mockUserService.getOrCreateUser("device-linked");
       await mockUserService.linkLineUserId(user.id, "Ulinked123");
 
@@ -234,9 +234,15 @@ describe("LINE OA Messaging & Deep Link (Ticket 09)", () => {
       expect(flex.type).toBe("flex");
       expect(flex.altText).toContain("Important Report");
 
-      // Verify deep link in flex message footer button
-      const buttonUri = flex.contents.footer.contents[0].action.uri;
-      expect(buttonUri).toBe(`nudge://focus?taskId=${task.id}`);
+      // Verify in-chat message action in flex message footer button
+      const buttonAction = flex.contents.footer.contents[0].action;
+      expect(buttonAction.type).toBe("message");
+      expect(buttonAction.text).toBe(`เริ่ม 10 นาที #${task.id}`);
+
+      // Verify quickReply also uses message action
+      const quickReplyAction = flex.quickReply.items[0].action;
+      expect(quickReplyAction.type).toBe("message");
+      expect(quickReplyAction.text).toBe(`เริ่ม 10 นาที #${task.id}`);
     });
   });
 

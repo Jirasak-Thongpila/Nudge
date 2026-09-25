@@ -77,4 +77,75 @@ describe("In-Chat 10-Minute Focus Session", () => {
 
     expect(lineService.startChatFocusSession).toHaveBeenCalledWith(1, 15, "reply-token-777");
   });
+
+  it("should trigger startChatFocusSession when user sends message matching 'ขอทำต่อ'", async () => {
+    const lineService = new LineService();
+    (lineService as any).userService.getOrCreateUserByLineUserId = mock(async () => ({ id: 1 }));
+    (lineService as any).taskService.getTasksForUser = mock(async () => [
+      { id: 20, title: "เขียนโค้ดต่อ", status: "IN_PROGRESS" },
+    ]);
+    lineService.startChatFocusSession = mock(async () => {});
+
+    await lineService.handleWebhookEvents([
+      {
+        type: "message",
+        replyToken: "reply-token-888",
+        source: { userId: "Uuser123" },
+        message: {
+          id: "msg-888",
+          type: "text",
+          text: "ขอทำต่อ #20",
+        },
+      },
+    ]);
+
+    expect(lineService.startChatFocusSession).toHaveBeenCalledWith(1, 20, "reply-token-888");
+  });
+
+  it("should reply kindly when user sends 'พักก่อนดีกว่า'", async () => {
+    const lineService = new LineService();
+    (lineService as any).userService.getOrCreateUserByLineUserId = mock(async () => ({ id: 1 }));
+    let replies: any[] = [];
+    lineService.replyMessage = mock(async (_token: string, msgs: any[]) => {
+      replies = msgs;
+      return true;
+    });
+
+    await lineService.handleWebhookEvents([
+      {
+        type: "message",
+        replyToken: "reply-token-999",
+        source: { userId: "Uuser123" },
+        message: {
+          id: "msg-999",
+          type: "text",
+          text: "พักก่อนดีกว่า",
+        },
+      },
+    ]);
+
+    expect(replies.length).toBe(1);
+    expect(replies[0].text).toContain("พักผ่อน");
+  });
+
+  it("should generate TaskCreated and TaskList Flex Messages with message actions instead of web URLs", () => {
+    const lineService = new LineService();
+    const task: any = {
+      id: 99,
+      title: "ส่งการบ้าน",
+      importance: 4,
+      daysRemaining: 1,
+      estimatedMinutes: 30,
+    };
+
+    const taskCreatedFlex = lineService.createTaskCreatedFlexMessage(task);
+    const createdAction = taskCreatedFlex.contents.footer.contents[0].action;
+    expect(createdAction.type).toBe("message");
+    expect(createdAction.text).toBe("เริ่ม 10 นาที #99");
+
+    const taskListFlex = lineService.createTaskListFlexMessage([task]);
+    const listAction = taskListFlex.contents.footer.contents[0].action;
+    expect(listAction.type).toBe("message");
+    expect(listAction.text).toBe("ดูงาน");
+  });
 });

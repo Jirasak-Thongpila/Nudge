@@ -67,9 +67,6 @@ export class LineService {
       nudgeReasonText?: string;
     }
   ): LineFlexMessage {
-    const deepLinkUrl = this.liffId
-      ? `https://liff.line.me/${this.liffId}?taskId=${task.id}`
-      : `nudge://focus?taskId=${task.id}`;
     const nudgeText = task.adaptiveNudgeMessage || "ลองเริ่ม 10 นาทีไหม?";
     const altText = `Nudge: ${task.title} — ${nudgeText}`;
 
@@ -166,9 +163,9 @@ export class LineService {
             color: "#4F46E5",
             height: "sm",
             action: {
-              type: "uri",
+              type: "message",
               label: "เริ่ม 10 นาที",
-              uri: deepLinkUrl,
+              text: `เริ่ม 10 นาที #${task.id}`,
             },
           },
         ],
@@ -184,7 +181,7 @@ export class LineService {
         items: [
           {
             type: "action",
-            action: { type: "uri", label: "เริ่ม 10 นาที", uri: deepLinkUrl },
+            action: { type: "message", label: "เริ่ม 10 นาที", text: `เริ่ม 10 นาที #${task.id}` },
           },
           {
             type: "action",
@@ -203,9 +200,6 @@ export class LineService {
    * Constructs a Flex Message confirmation for newly created tasks via AI NLP.
    */
   createTaskCreatedFlexMessage(task: TaskWithDerived): LineFlexMessage {
-    const liffUrl = this.liffId
-      ? `https://liff.line.me/${this.liffId}?taskId=${task.id}`
-      : `nudge://focus?taskId=${task.id}`;
     const deadlineText =
       task.daysRemaining < 0
         ? `เลยกำหนด ${Math.abs(task.daysRemaining)} วัน`
@@ -287,9 +281,9 @@ export class LineService {
             color: "#4F46E5",
             height: "sm",
             action: {
-              type: "uri",
+              type: "message",
               label: "เริ่ม 10 นาที",
-              uri: liffUrl,
+              text: `เริ่ม 10 นาที #${task.id}`,
             },
           },
         ],
@@ -307,8 +301,6 @@ export class LineService {
    * Constructs a Flex Message summarizing the user's active tasks.
    */
   createTaskListFlexMessage(tasks: TaskWithDerived[]): LineFlexMessage {
-    const liffBaseUrl = this.liffId ? `https://liff.line.me/${this.liffId}` : `nudge://app`;
-
     if (tasks.length === 0) {
       return {
         type: "flex",
@@ -412,9 +404,9 @@ export class LineService {
             color: "#4F46E5",
             height: "sm",
             action: {
-              type: "uri",
+              type: "message",
               label: "ดูงานทั้งหมด",
-              uri: liffBaseUrl,
+              text: "ดูงาน",
             },
           },
         ],
@@ -1080,6 +1072,26 @@ export class LineService {
         },
       },
     ]);
+
+    // Automatically schedule follow-up check-in after 10 minutes
+    const timer = setTimeout(async () => {
+      try {
+        const currentTask = await this.taskService.getTaskById(userId, taskId);
+        if (!currentTask || currentTask.status === "COMPLETED") {
+          return;
+        }
+        const user = await this.userService.findById(userId);
+        if (user?.lineUserId) {
+          await this.sendFocusSessionCheckIn(user.lineUserId, taskId);
+        }
+      } catch (err) {
+        console.error(`[LINE] Focus check-in error for user ${userId}, task ${taskId}:`, err);
+      }
+    }, 10 * 60 * 1000);
+
+    if (timer && typeof (timer as any).unref === "function") {
+      (timer as any).unref();
+    }
   }
 
   /**
@@ -1338,7 +1350,7 @@ export class LineService {
           lower === "คำสั่ง" ||
           lower === "ทำอะไรได้บ้าง";
 
-        const focusMatch = text.match(/^(?:เริ่ม\s*10\s*นาที|เริ่มโฟกัส|start\s*focus)(.*)$/i);
+        const focusMatch = text.match(/^(?:เริ่ม\s*10\s*นาที|เริ่มโฟกัส|start\s*focus|ขอทำต่อ)(.*)$/i);
         if (focusMatch) {
           const rest = focusMatch[1].trim();
           const idMatch = rest.match(/#?(\d+)/);
@@ -1362,6 +1374,23 @@ export class LineService {
             repliesSent++;
             continue;
           }
+        }
+
+        const isRestQuery =
+          lower === "พักก่อนดีกว่า" ||
+          lower === "พักก่อน" ||
+          lower === "ขอพักก่อน" ||
+          lower === "พักผ่อน";
+
+        if (isRestQuery) {
+          await this.replyMessage(replyToken, [
+            {
+              type: "text",
+              text: "ได้เลยครับ! พักผ่อนให้เต็มที่ ดื่มน้ำหรือพักสายตาสักครู่ แล้วค่อยกลับมาลุยต่อนะครับ ☕✨",
+            },
+          ]);
+          repliesSent++;
+          continue;
         }
 
         if (isIdQuery) {
