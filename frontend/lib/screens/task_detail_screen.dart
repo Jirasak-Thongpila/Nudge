@@ -3,6 +3,8 @@ import '../models/task.dart';
 import '../models/focus_session.dart';
 import '../services/api_client.dart';
 import '../services/notification_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/theme_toggle_button.dart';
 import 'focus_timer_screen.dart';
 
 class TaskDetailScreen extends StatefulWidget {
@@ -72,22 +74,23 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   }
 
   Future<void> _confirmAndPostpone() async {
+    final colors = context.colors;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Text(
+        backgroundColor: colors.cardSurface,
+        title: Text(
           'เลื่อนงานนี้ไปก่อน?',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.bold),
         ),
-        content: const Text(
+        content: Text(
           'คุณกำลังเลือกที่จะเลื่อนงานนี้อย่างตั้งใจ (Explicit Postpone)\n\nระบบจะบันทึกข้อมูลเพื่อช่วยแนะนำขั้นตอนที่เล็กลงในภายหลัง โดยไม่ตัดสินคุณ',
-          style: TextStyle(color: Color(0xFF94A3B8), height: 1.4),
+          style: TextStyle(color: colors.textSecondary, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('ยกเลิก', style: TextStyle(color: Colors.white70)),
+            child: Text('ยกเลิก', style: TextStyle(color: colors.textSecondary)),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -185,35 +188,36 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   }
 
   Future<void> _promptLinkLineAccount() async {
+    final colors = context.colors;
     final lineIdController = TextEditingController();
     final shouldLink = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Row(
+        backgroundColor: colors.cardSurface,
+        title: Row(
           children: [
-            Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF06C755)),
-            SizedBox(width: 8),
-            Text('เชื่อมต่อ LINE OA', style: TextStyle(color: Colors.white, fontSize: 18)),
+            const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF06C755)),
+            const SizedBox(width: 8),
+            Text('เชื่อมต่อ LINE OA', style: TextStyle(color: colors.textPrimary, fontSize: 18)),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'คุณยังไม่ได้เชื่อมต่อบัญชี LINE กับอุปกรณ์นี้\nกรุณาระบุ LINE User ID เพื่อรับ Action Nudge พร้อม Deep Link',
-              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13, height: 1.4),
+              style: TextStyle(color: colors.textSecondary, fontSize: 13, height: 1.4),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: lineIdController,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
+              style: TextStyle(color: colors.textPrimary),
+              decoration: InputDecoration(
                 labelText: 'LINE User ID (เช่น U12345...)',
-                labelStyle: TextStyle(color: Color(0xFF94A3B8)),
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF475569))),
-                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF06C755))),
+                labelStyle: TextStyle(color: colors.textSecondary),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: colors.cardBorder)),
+                focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF06C755))),
               ),
             ),
           ],
@@ -221,7 +225,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('ยกเลิก', style: TextStyle(color: Colors.white70)),
+            child: Text('ยกเลิก', style: TextStyle(color: colors.textSecondary)),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -261,6 +265,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   }
 
   Future<void> _showEditDialog() async {
+    final colors = context.colors;
     final titleController = TextEditingController(text: _task.title);
     DateTime selectedDeadline = _task.deadline;
     int selectedImportance = _task.importance;
@@ -270,8 +275,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) => AlertDialog(
-          backgroundColor: const Color(0xFF1E293B),
-          title: const Text('แก้ไข Task', style: TextStyle(color: Colors.white)),
+          backgroundColor: colors.cardSurface,
+          title: Text('แก้ไข Task', style: TextStyle(color: colors.textPrimary)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -279,22 +284,22 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               children: [
                 TextField(
                   controller: titleController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
+                  style: TextStyle(color: colors.textPrimary),
+                  decoration: InputDecoration(
                     labelText: 'ชื่องาน',
-                    labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                    labelStyle: TextStyle(color: colors.textSecondary),
                     enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Color(0xFF475569)),
+                      borderSide: BorderSide(color: colors.cardBorder),
                     ),
-                    focusedBorder: UnderlineInputBorder(
+                    focusedBorder: const UnderlineInputBorder(
                       borderSide: BorderSide(color: Color(0xFF38BDF8)),
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   'ความสำคัญ (1-5):',
-                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                  style: TextStyle(color: colors.textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -307,13 +312,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: isSelected ? const Color(0xFF38BDF8) : const Color(0xFF334155),
+                          color: isSelected ? const Color(0xFF38BDF8) : colors.cardSurfaceElevated,
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: colors.cardBorder),
                         ),
                         child: Text(
                           '$value',
                           style: TextStyle(
-                            color: isSelected ? const Color(0xFF0F172A) : Colors.white,
+                            color: isSelected ? const Color(0xFF0F172A) : colors.textPrimary,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -325,10 +331,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.calendar_today, color: Color(0xFF38BDF8)),
-                  title: const Text('กำหนดส่ง (Deadline)', style: TextStyle(color: Colors.white, fontSize: 13)),
+                  title: Text('กำหนดส่ง (Deadline)', style: TextStyle(color: colors.textPrimary, fontSize: 13)),
                   subtitle: Text(
                     _formatDateTime(selectedDeadline),
-                    style: const TextStyle(color: Color(0xFF94A3B8)),
+                    style: TextStyle(color: colors.textSecondary),
                   ),
                   onTap: () async {
                     final date = await showDatePicker(
@@ -358,7 +364,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   },
                 ),
                 const SizedBox(height: 8),
-                const Text('เวลาที่คาดว่าจะใช้ (นาที):', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                Text('เวลาที่คาดว่าจะใช้ (นาที):', style: TextStyle(color: colors.textSecondary, fontSize: 13)),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -368,9 +374,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       label: Text('$mins นาที'),
                       selected: isSelected,
                       selectedColor: const Color(0xFF38BDF8),
-                      backgroundColor: const Color(0xFF334155),
+                      backgroundColor: colors.cardSurfaceElevated,
                       labelStyle: TextStyle(
-                        color: isSelected ? const Color(0xFF0F172A) : Colors.white,
+                        color: isSelected ? const Color(0xFF0F172A) : colors.textPrimary,
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
                       onSelected: (val) {
@@ -385,7 +391,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('ยกเลิก', style: TextStyle(color: Colors.white70)),
+              child: Text('ยกเลิก', style: TextStyle(color: colors.textSecondary)),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
@@ -431,19 +437,20 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   }
 
   Future<void> _confirmAndDelete() async {
+    final colors = context.colors;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Text('ลบ Task นี้?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: const Text(
+        backgroundColor: colors.cardSurface,
+        title: Text('ลบ Task นี้?', style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.bold)),
+        content: Text(
           'การลบจะเป็นแบบ Soft Delete (ADR-0004)\n\nระบบจะซ่อนงานนี้จากรายการหลัก แต่จะยังคงเก็บประวัติ Focus Session เพื่อไม่ให้สถิติของคุณสูญหาย',
-          style: TextStyle(color: Color(0xFF94A3B8), height: 1.4),
+          style: TextStyle(color: colors.textSecondary, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('ยกเลิก', style: TextStyle(color: Colors.white70)),
+            child: Text('ยกเลิก', style: TextStyle(color: colors.textSecondary)),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -478,24 +485,27 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final isUrgent = _task.isOverdue || _task.isDueToday;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: colors.bgCanvas,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white70),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: colors.textSecondary),
           onPressed: () => Navigator.pop(context, true),
         ),
-        title: const Text(
+        title: Text(
           'รายละเอียด Task',
-          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+          style: TextStyle(color: colors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
         ),
         actions: [
+          const ThemeToggleButton(),
+          const SizedBox(width: 4),
           IconButton(
-            icon: const Icon(Icons.edit_outlined, color: Colors.white70),
+            icon: Icon(Icons.edit_outlined, color: colors.textSecondary),
             tooltip: 'แก้ไข',
             onPressed: _isProcessing ? null : _showEditDialog,
           ),
@@ -562,10 +572,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     // Task Title
                     Text(
                       _task.title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: colors.textPrimary,
                         height: 1.3,
                       ),
                     ),
@@ -575,7 +585,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                          color: colors.isDark
+                              ? const Color(0xFF6366F1).withValues(alpha: 0.15)
+                              : const Color(0xFFEEF2FF),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: const Color(0xFF818CF8)),
                         ),
@@ -586,8 +598,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             Expanded(
                               child: Text(
                                 _task.adaptiveNudgeMessage!,
-                                style: const TextStyle(
-                                  color: Color(0xFFC7D2FE),
+                                style: TextStyle(
+                                  color: colors.isDark ? const Color(0xFFC7D2FE) : const Color(0xFF4338CA),
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                   height: 1.3,
@@ -612,10 +624,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                           children: [
                             const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 22),
                             const SizedBox(width: 10),
-                            const Expanded(
+                            Expanded(
                               child: Text(
                                 'งานนี้ถูกเลื่อนหลายครั้งและใกล้กำหนดส่ง ลองเริ่มด้วยช่วงสั้นๆ 10 นาที เพื่อคลายแรงต้าน',
-                                style: TextStyle(color: Colors.amber, fontSize: 13, height: 1.3),
+                                style: TextStyle(
+                                  color: colors.isDark ? Colors.amber : Colors.amber.shade900,
+                                  fontSize: 13,
+                                  height: 1.3,
+                                ),
                               ),
                             ),
                           ],
@@ -629,9 +645,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E293B),
+                        color: colors.cardSurface,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFF334155)),
+                        border: Border.all(color: colors.cardBorder),
+                        boxShadow: colors.cardShadow,
                       ),
                       child: Column(
                         children: [
@@ -639,24 +656,28 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             icon: Icons.calendar_today_rounded,
                             label: 'กำหนดส่ง',
                             value: _formatDateTime(_task.deadline),
+                            colors: colors,
                           ),
-                          const Divider(color: Color(0xFF334155), height: 24),
+                          Divider(color: colors.cardBorder, height: 24),
                           _buildDetailRow(
                             icon: Icons.star_rounded,
                             label: 'ระดับความสำคัญ',
                             value: '${_task.importance}/5',
+                            colors: colors,
                           ),
-                          const Divider(color: Color(0xFF334155), height: 24),
+                          Divider(color: colors.cardBorder, height: 24),
                           _buildDetailRow(
                             icon: Icons.timer_outlined,
                             label: 'เวลาที่คาดว่าจะใช้',
                             value: '${_task.estimatedMinutes} นาที',
+                            colors: colors,
                           ),
-                          const Divider(color: Color(0xFF334155), height: 24),
+                          Divider(color: colors.cardBorder, height: 24),
                           _buildDetailRow(
                             icon: Icons.schedule_rounded,
                             label: 'จำนวนครั้งที่เลื่อน',
                             value: '${_task.postponeCount} ครั้ง',
+                            colors: colors,
                           ),
                         ],
                       ),
@@ -670,8 +691,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         Expanded(
                           child: OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF94A3B8),
-                              side: const BorderSide(color: Color(0xFF475569)),
+                              foregroundColor: colors.textSecondary,
+                              backgroundColor: colors.cardSurfaceElevated,
+                              side: BorderSide(color: colors.cardBorder),
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
@@ -684,9 +706,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         Expanded(
                           child: OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: _task.isCompleted ? const Color(0xFF94A3B8) : const Color(0xFF10B981),
+                              foregroundColor: _task.isCompleted ? colors.textMuted : const Color(0xFF10B981),
+                              backgroundColor: colors.cardSurfaceElevated,
                               side: BorderSide(
-                                color: _task.isCompleted ? const Color(0xFF475569) : const Color(0xFF10B981),
+                                color: _task.isCompleted ? colors.cardBorder : const Color(0xFF10B981),
                               ),
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -745,21 +768,21 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         margin: const EdgeInsets.only(top: 10),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1E293B),
+                          color: colors.cardSurface,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFF334155)),
+                          border: Border.all(color: colors.cardBorder),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
+                            Row(
                               children: [
-                                Icon(Icons.notifications_active_outlined, color: Color(0xFF818CF8), size: 16),
-                                SizedBox(width: 6),
+                                const Icon(Icons.notifications_active_outlined, color: Color(0xFF818CF8), size: 16),
+                                const SizedBox(width: 6),
                                 Text(
                                   'ระบบแจ้งเตือนอัจฉริยะ (Smart Cadence)',
                                   style: TextStyle(
-                                    color: Colors.white,
+                                    color: colors.textPrimary,
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -773,7 +796,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                   : _task.daysRemaining <= 1
                                       ? '• ใกล้ถึงกำหนดส่ง: ระบบจะเตือนถี่ขึ้นผ่าน LINE OA และระบบอุปกรณ์'
                                       : '• ระบบจะเตือนเมื่อใกล้ถึงกำหนด หรือเมื่อตรวจพบการเลื่อนงานซ้ำ',
-                              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11, height: 1.4),
+                              style: TextStyle(color: colors.textSecondary, fontSize: 11, height: 1.4),
                             ),
                           ],
                         ),
@@ -783,10 +806,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     const SizedBox(height: 28),
 
                     // Focus Sessions History
-                    const Text(
+                    Text(
                       'ประวัติการโฟกัส (Focus Sessions)',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: colors.textPrimary,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -805,17 +828,17 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1E293B).withValues(alpha: 0.5),
+                          color: colors.cardSurfaceElevated,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFF334155)),
+                          border: Border.all(color: colors.cardBorder),
                         ),
-                        child: const Column(
+                        child: Column(
                           children: [
-                            Icon(Icons.history_toggle_off_rounded, color: Color(0xFF64748B), size: 36),
-                            SizedBox(height: 8),
+                            const Icon(Icons.history_toggle_off_rounded, color: Color(0xFF64748B), size: 36),
+                            const SizedBox(height: 8),
                             Text(
                               'ยังไม่มีประวัติการโฟกัสสำหรับงานนี้',
-                              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                              style: TextStyle(color: colors.textSecondary, fontSize: 13),
                             ),
                           ],
                         ),
@@ -831,9 +854,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                           return Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1E293B),
+                              color: colors.cardSurface,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: const Color(0xFF334155)),
+                              border: Border.all(color: colors.cardBorder),
                             ),
                             child: Row(
                               children: [
@@ -841,7 +864,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                   session.completed
                                       ? Icons.check_circle_rounded
                                       : Icons.pause_circle_outline_rounded,
-                                  color: session.completed ? const Color(0xFF10B981) : const Color(0xFF94A3B8),
+                                  color: session.completed ? const Color(0xFF10B981) : colors.textMuted,
                                   size: 20,
                                 ),
                                 const SizedBox(width: 12),
@@ -851,8 +874,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                     children: [
                                       Text(
                                         'โฟกัส ${session.durationMinutes} นาที ${session.completed ? '(สำเร็จ)' : '(หยุดก่อน)'}',
-                                        style: const TextStyle(
-                                          color: Colors.white,
+                                        style: TextStyle(
+                                          color: colors.textPrimary,
                                           fontWeight: FontWeight.w600,
                                           fontSize: 13,
                                         ),
@@ -860,7 +883,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                       const SizedBox(height: 2),
                                       Text(
                                         _formatDateTime(session.startedAt),
-                                        style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                                        style: TextStyle(color: colors.textMuted, fontSize: 11),
                                       ),
                                     ],
                                   ),
@@ -879,19 +902,24 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
   }
 
-  Widget _buildDetailRow({required IconData icon, required String label, required String value}) {
+  Widget _buildDetailRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    required AppColorTokens colors,
+  }) {
     return Row(
       children: [
         Icon(icon, color: const Color(0xFF38BDF8), size: 18),
         const SizedBox(width: 10),
         Text(
           label,
-          style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+          style: TextStyle(color: colors.textSecondary, fontSize: 14),
         ),
         const Spacer(),
         Text(
           value,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+          style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.bold, fontSize: 14),
         ),
       ],
     );

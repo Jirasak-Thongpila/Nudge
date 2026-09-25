@@ -5,6 +5,7 @@ import '../services/api_client.dart';
 import '../services/deep_link_service.dart';
 import '../services/liff_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/theme_toggle_button.dart';
 import 'dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -212,33 +213,46 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return Scaffold(
-      backgroundColor: AppColors.bgCanvas,
+      backgroundColor: colors.bgCanvas,
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
-              child: _isLoading
-                  ? _buildLoadingState()
-                  : _backendOffline
-                      ? _buildOfflineState()
-                      : _buildLoginCard(),
+        child: Stack(
+          children: [
+            const Positioned(
+              top: 12,
+              right: 16,
+              child: ThemeToggleButton(),
             ),
-          ),
+            Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 440),
+                  child: _isLoading
+                      ? _buildLoadingState()
+                      : _backendOffline
+                          ? _buildOfflineState()
+                          : _buildLoginCard(),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildLoadingState() {
+    final colors = context.colors;
+
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.cardSurface,
+        color: colors.cardSurface,
         borderRadius: BorderRadius.circular(AppRadius.xxl),
-        border: Border.all(color: AppColors.cardBorder),
-        boxShadow: AppShadows.card,
+        border: Border.all(color: colors.cardBorder),
+        boxShadow: colors.cardShadow,
       ),
       padding: const EdgeInsets.all(36.0),
       child: Column(
@@ -256,16 +270,16 @@ class _LoginScreenState extends State<LoginScreen> {
           Text(
             _loadingMessage,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'ระบบกำลังเตรียมความพร้อมของข้อมูล',
-            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 13, color: colors.textSecondary),
           ),
         ],
       ),
@@ -273,12 +287,14 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildOfflineState() {
+    final colors = context.colors;
+
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.cardSurface,
+        color: colors.cardSurface,
         borderRadius: BorderRadius.circular(AppRadius.xxl),
         border: Border.all(color: AppColors.rose.withValues(alpha: 0.4)),
-        boxShadow: AppShadows.card,
+        boxShadow: colors.cardShadow,
       ),
       padding: const EdgeInsets.all(32.0),
       child: Column(
@@ -294,16 +310,16 @@ class _LoginScreenState extends State<LoginScreen> {
             child: const Icon(Icons.cloud_off_rounded, size: 48, color: AppColors.roseLight),
           ),
           const SizedBox(height: 20),
-          const Text(
+          Text(
             'ไม่สามารถเชื่อมต่อ Backend ได้',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: colors.textPrimary),
           ),
           const SizedBox(height: 8),
           Text(
             _errorMessage ??
                 'กรุณาตรวจสอบว่าเซิร์ฟเวอร์ Backend รันอยู่ที่ ${_apiClient.baseUrl}',
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+            style: TextStyle(fontSize: 13, color: colors.textSecondary, height: 1.4),
           ),
           const SizedBox(height: 24),
           FilledButton.icon(
@@ -323,6 +339,8 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildLoginCard() {
+    final colors = context.colors;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -353,39 +371,39 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 18),
-              const Text(
+              Text(
                 'Nudge',
                 style: TextStyle(
                   fontSize: 34,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.6,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 'ก้าวข้ามการผัดวันประกันพรุ่งด้วยก้าวเล็กๆ',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.textSecondary,
+                  color: colors.textSecondary,
                 ),
               ),
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryContainer,
+                  color: colors.primaryContainer,
                   borderRadius: AppRadius.pillRadius,
                   border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
                 ),
-                child: const Text(
+                child: Text(
                   'Action Nudge • Deadline Awareness',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.primaryLight,
+                    color: colors.isDark ? AppColors.primaryLight : AppColors.primary,
                   ),
                 ),
               ),
@@ -398,10 +416,10 @@ class _LoginScreenState extends State<LoginScreen> {
         // Main Login Action Card
         Container(
           decoration: BoxDecoration(
-            color: AppColors.cardSurface,
+            color: colors.cardSurface,
             borderRadius: BorderRadius.circular(AppRadius.xxl),
-            border: Border.all(color: AppColors.cardBorder),
-            boxShadow: AppShadows.card,
+            border: Border.all(color: colors.cardBorder),
+            boxShadow: colors.cardShadow,
           ),
           padding: const EdgeInsets.all(24.0),
           child: Column(
@@ -436,24 +454,24 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              const Text(
+              Text(
                 'เชื่อมต่อบัญชีเพื่อรับการแจ้งเตือน Action Nudge ผ่าน LINE OA',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 12, color: colors.textSecondary),
               ),
 
               const SizedBox(height: 20),
-              const Row(
+              Row(
                 children: [
-                  Expanded(child: Divider(color: AppColors.cardBorder)),
+                  Expanded(child: Divider(color: colors.cardBorder)),
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
                     child: Text(
                       'หรือ',
-                      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                      style: TextStyle(fontSize: 12, color: colors.textMuted),
                     ),
                   ),
-                  Expanded(child: Divider(color: AppColors.cardBorder)),
+                  Expanded(child: Divider(color: colors.cardBorder)),
                 ],
               ),
               const SizedBox(height: 20),
@@ -462,9 +480,9 @@ class _LoginScreenState extends State<LoginScreen> {
               OutlinedButton.icon(
                 onPressed: _handleGuestLogin,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.textPrimary,
-                  backgroundColor: AppColors.cardSurfaceElevated,
-                  side: const BorderSide(color: AppColors.cardBorderGlow),
+                  foregroundColor: colors.textPrimary,
+                  backgroundColor: colors.cardSurfaceElevated,
+                  side: BorderSide(color: colors.cardBorderGlow),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppRadius.buttonRadius),
@@ -480,10 +498,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'สร้างและจัดการงานได้ทันที ข้อมูลจะผูกกับอุปกรณ์นี้ (ADR-0001)',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                style: TextStyle(fontSize: 11, color: colors.textMuted),
               ),
             ],
           ),
@@ -494,10 +512,10 @@ class _LoginScreenState extends State<LoginScreen> {
         // Developer / Testing Mode Panel
         Card(
           elevation: 0,
-          color: AppColors.cardSurface,
+          color: colors.cardSurface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.cardRadius),
-            side: const BorderSide(color: AppColors.cardBorder),
+            side: BorderSide(color: colors.cardBorder),
           ),
           child: Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -507,25 +525,25 @@ class _LoginScreenState extends State<LoginScreen> {
                 color: AppColors.amber,
                 size: 22,
               ),
-              title: const Text(
+              title: Text(
                 'โหมดนักพัฒนา (Dev / Test Mode)',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                 ),
               ),
-              subtitle: const Text(
+              subtitle: Text(
                 'จำลอง LINE Login บน Localhost / Windows',
-                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 11, color: colors.textSecondary),
               ),
               childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               children: [
-                const Divider(height: 1, color: AppColors.cardBorder),
+                Divider(height: 1, color: colors.cardBorder),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'เลือกบัญชีทดสอบด่วน (1-Click Simulators):',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.textSecondary),
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -538,14 +556,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 8),
-                          backgroundColor: AppColors.cardSurfaceElevated,
-                          side: const BorderSide(color: AppColors.cardBorder),
+                          backgroundColor: colors.cardSurfaceElevated,
+                          side: BorderSide(color: colors.cardBorder),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(AppRadius.sm),
                           ),
                         ),
-                        icon: const Icon(Icons.person, size: 16, color: AppColors.primaryLight),
-                        label: const Text('User 01', style: TextStyle(fontSize: 12, color: AppColors.textPrimary)),
+                        icon: Icon(Icons.person, size: 16, color: colors.isDark ? AppColors.primaryLight : AppColors.primary),
+                        label: Text('User 01', style: TextStyle(fontSize: 12, color: colors.textPrimary)),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -557,14 +575,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 8),
-                          backgroundColor: AppColors.cardSurfaceElevated,
-                          side: const BorderSide(color: AppColors.cardBorder),
+                          backgroundColor: colors.cardSurfaceElevated,
+                          side: BorderSide(color: colors.cardBorder),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(AppRadius.sm),
                           ),
                         ),
-                        icon: const Icon(Icons.person, size: 16, color: AppColors.tealLight),
-                        label: const Text('User 02', style: TextStyle(fontSize: 12, color: AppColors.textPrimary)),
+                        icon: Icon(Icons.person, size: 16, color: colors.isDark ? AppColors.tealLight : AppColors.teal),
+                        label: Text('User 02', style: TextStyle(fontSize: 12, color: colors.textPrimary)),
                       ),
                     ),
                   ],
@@ -577,25 +595,25 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _devLineIdController,
                         decoration: InputDecoration(
                           labelText: 'Custom LINE User ID',
-                          labelStyle: const TextStyle(color: AppColors.textSecondary),
+                          labelStyle: TextStyle(color: colors.textSecondary),
                           isDense: true,
-                          fillColor: AppColors.cardSurfaceElevated,
+                          fillColor: colors.cardSurfaceElevated,
                           contentPadding:
                               const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(AppRadius.sm),
-                            borderSide: const BorderSide(color: AppColors.cardBorder),
+                            borderSide: BorderSide(color: colors.cardBorder),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(AppRadius.sm),
-                            borderSide: const BorderSide(color: AppColors.cardBorder),
+                            borderSide: BorderSide(color: colors.cardBorder),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(AppRadius.sm),
                             borderSide: const BorderSide(color: AppColors.primary),
                           ),
                         ),
-                        style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
+                        style: TextStyle(fontSize: 12, color: colors.textPrimary),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -622,10 +640,10 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
 
         const SizedBox(height: 24),
-        const Center(
+        Center(
           child: Text(
             'Nudge: Behavioral Productivity System',
-            style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+            style: TextStyle(fontSize: 11, color: colors.textMuted),
           ),
         ),
       ],
