@@ -40,7 +40,7 @@ const CANCEL_MESSAGE = "รับทราบครับ ยกเลิกแ�
 
 /** Words that hint the message is about something to do. */
 export const TASK_KEYWORD_PATTERN =
-  /(ส่ง|ทำ|สอบ|การบ้าน|โปรเจ|โครงงาน|งาน|รายงาน|อ่านหนังสือ|นัด|ประชุม|มีตติ้ง|มีทติ้ง|สัมมนา|สมินา|อบรม|ติว|เรียน|นำเสนอ|เตือน|present|meeting|exam|assignment|submit|project)/;
+  /(ส่ง|ทำ|สอบ|การบ้าน|โปรเจ|โครงงาน|งาน|รายงาน|อ่านหนังสือ|นัด|ประชุม|มีตติ้ง|มีทติ้ง|สัมมนา|สมินา|อบรม|ติว|เรียน|นำเสนอ|เตือน|บันทึก|present|meeting|exam|assignment|submit|project)/;
 
 /** A date/time/duration the user mentioned — strong evidence of a real request. */
 const TASK_TIME_CUE =
@@ -81,10 +81,16 @@ export const CLARIFY_TASK_MESSAGE =
 export class GeminiService {
   private apiKey: string;
   private model: string;
+  private fallbackModels: string[];
 
-  constructor(apiKey?: string, model: string = "gemini-2.5-flash") {
+  constructor(
+    apiKey?: string,
+    model: string = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite",
+    fallbackModels: string[] = ["gemini-3-flash-preview", "gemini-2.5-flash"]
+  ) {
     this.apiKey = apiKey ?? process.env.GEMINI_API_KEY ?? "";
     this.model = model;
+    this.fallbackModels = fallbackModels.filter((m) => m !== model);
   }
 
   /**
@@ -286,6 +292,69 @@ export class GeminiService {
   /**
    * Parses natural language Thai user messages into structured task actions or intents using Gemini API.
    */
+  /**
+   * Calls Gemini generateContent with automatic fallback across multiple models
+   * if the current model encounters quota limits (429), temporary unavailability (503), or server errors.
+   */
+  private async callGeminiWithFallback(
+    payloadBuilder: () => any,
+    candidateModels: string[] = [this.model, ...this.fallbackModels]
+  ): Promise<{ ok: boolean; status: number; text?: string; data?: any; usedModel?: string }> {
+    const modelsToTry = Array.from(new Set(candidateModels));
+    let lastStatus = 0;
+    let lastErrorText = "";
+
+    for (let i = 0; i < modelsToTry.length; i++) {
+      const currentModel = modelsToTry[i];
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${this.apiKey}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payloadBuilder()),
+          }
+        );
+
+        if (response.ok) {
+          const data = (await response.json()) as any;
+          return { ok: true, status: response.status, data, usedModel: currentModel };
+        }
+
+        const errText = await response.text();
+        lastStatus = response.status;
+        lastErrorText = errText;
+
+        const nextModel = modelsToTry[i + 1];
+        if (nextModel && (response.status === 429 || response.status >= 500 || response.status === 404)) {
+          console.warn(
+            `[GeminiService] Model '${currentModel}' failed with status ${response.status}. Falling back to '${nextModel}'...`
+          );
+          continue;
+        } else {
+          console.error(
+            `[GeminiService] Model '${currentModel}' failed with status ${response.status}: ${errText.slice(0, 160)}`
+          );
+        }
+      } catch (err) {
+        lastStatus = 500;
+        lastErrorText = String(err);
+        const nextModel = modelsToTry[i + 1];
+        if (nextModel) {
+          console.warn(
+            `[GeminiService] Network/fetch error on model '${currentModel}'. Falling back to '${nextModel}'...`,
+            err
+          );
+          continue;
+        }
+      }
+    }
+
+    return { ok: false, status: lastStatus, text: lastErrorText };
+  }
+
   async parseTaskIntent(message: string, now: Date = new Date()): Promise<TaskIntentResult> {
     const raw = message.trim();
     if (!raw) {
@@ -363,60 +432,49 @@ Rules:
 4. If it's a general greeting or unrelated query, set intent to "UNKNOWN" and provide a helpful, friendly replyMessage in Thai.
 5. Never use "CREATE_TASK" for small talk, thanks, praise, complaints or venting ("งานเยอะจัง", "เหนื่อยมาก"), questions about a schedule, or messages saying something is already done. Use "UNKNOWN" with a short, empathetic replyMessage that invites the user to state a concrete task with a day or time.`;
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
+      const responseResult = await this.callGeminiWithFallback(() => ({
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: `${systemPrompt}\n\nUser Message: "${trimmed}"` }],
           },
-          body: JSON.stringify({
-            contents: [
-              {
-                role: "user",
-                parts: [{ text: `${systemPrompt}\n\nUser Message: "${trimmed}"` }],
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "object",
+            properties: {
+              intent: {
+                type: "string",
+                enum: [
+                  "CREATE_TASK",
+                  "VIEW_TASKS",
+                  "COMPLETE_TASK",
+                  "POSTPONE_TASK",
+                  "DELETE_TASK",
+                  "GET_RECOMMENDATION",
+                  "GET_ID",
+                  "HELP",
+                  "UNKNOWN",
+                ],
               },
-            ],
-            generationConfig: {
-              responseMimeType: "application/json",
-              responseSchema: {
-                type: "object",
-                properties: {
-                  intent: {
-                    type: "string",
-                    enum: [
-                      "CREATE_TASK",
-                      "VIEW_TASKS",
-                      "COMPLETE_TASK",
-                      "POSTPONE_TASK",
-                      "DELETE_TASK",
-                      "GET_RECOMMENDATION",
-                      "GET_ID",
-                      "HELP",
-                      "UNKNOWN",
-                    ],
-                  },
-                  title: { type: "string" },
-                  deadline: { type: "string" },
-                  importance: { type: "integer" },
-                  estimatedMinutes: { type: "integer" },
-                  taskQuery: { type: "string" },
-                  replyMessage: { type: "string" },
-                },
-                required: ["intent"],
-              },
+              title: { type: "string" },
+              deadline: { type: "string" },
+              importance: { type: "integer" },
+              estimatedMinutes: { type: "integer" },
+              taskQuery: { type: "string" },
+              replyMessage: { type: "string" },
             },
-          }),
-        }
-      );
+            required: ["intent"],
+          },
+        },
+      }));
 
-      if (!response.ok) {
-        console.error("Gemini API Error:", response.status, await response.text());
+      if (!responseResult.ok || !responseResult.data) {
         return this.fallbackHeuristicParser(trimmed, now);
       }
 
-      const data = (await response.json()) as any;
-      const contentText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      const contentText = responseResult.data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!contentText) {
         return this.fallbackHeuristicParser(trimmed, now);
       }
@@ -487,7 +545,7 @@ Rules:
     } else if (trimmed.includes("มะรืน")) {
       targetDate.setDate(targetDate.getDate() + 2);
       hasSpecificDate = true;
-    } else if (trimmed.includes("พรุ่งนี้") || trimmed.includes("พรุ่งนี")) {
+    } else if (trimmed.includes("พรุ่งนี้") || trimmed.includes("พรุ่งนี") || trimmed.includes("พรุ่งตอน") || trimmed.includes("พรุ่ง")) {
       targetDate.setDate(targetDate.getDate() + 1);
       hasSpecificDate = true;
     } else {
@@ -570,7 +628,7 @@ Rules:
     }
 
     title = title
-      .replace(/^(ช่วยเตือน|สร้างงาน|เพิ่มงาน)\s*/i, "")
+      .replace(/^(ช่วยเตือน|สร้างงาน|เพิ่มงาน|ช่วยบันทึก|บันทึก)\s*/i, "")
       .replace(/^มีส่ง\s*/i, "ส่ง")
       .replace(/^ต้องส่ง\s*/i, "ส่ง")
       .replace(/^มี\s*/i, "")
@@ -672,71 +730,80 @@ Rules:
 6. If the user asks to postpone, set intent to "POSTPONE_TASK".
 7. If casual talk or unclear audio, set intent to "UNKNOWN" with an empathetic Thai "replyMessage".`;
 
+    const audioCandidates = [
+      this.model,
+      ...this.fallbackModels,
+    ].filter((m) => m !== "gemini-3-flash-preview");
+    if (!audioCandidates.includes("gemini-2.5-flash-lite")) {
+      audioCandidates.push("gemini-2.5-flash-lite");
+    }
+
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              {
-                role: "user",
-                parts: [
-                  { text: systemPrompt },
-                  {
-                    inlineData: {
-                      mimeType,
-                      data: base64Audio,
-                    },
+      const responseResult = await this.callGeminiWithFallback(
+        () => ({
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: systemPrompt },
+                {
+                  inlineData: {
+                    mimeType,
+                    data: base64Audio,
                   },
-                ],
-              },
-            ],
-            generationConfig: {
-              responseMimeType: "application/json",
-              responseSchema: {
-                type: "object",
-                properties: {
-                  transcription: { type: "string" },
-                  intent: {
-                    type: "string",
-                    enum: [
-                      "CREATE_TASK",
-                      "VIEW_TASKS",
-                      "COMPLETE_TASK",
-                      "POSTPONE_TASK",
-                      "DELETE_TASK",
-                      "GET_RECOMMENDATION",
-                      "GET_ID",
-                      "HELP",
-                      "UNKNOWN",
-                    ],
-                  },
-                  title: { type: "string" },
-                  deadline: { type: "string" },
-                  importance: { type: "integer" },
-                  estimatedMinutes: { type: "integer" },
-                  taskQuery: { type: "string" },
-                  replyMessage: { type: "string" },
                 },
-                required: ["intent", "transcription"],
-              },
+              ],
             },
-          }),
-        }
+          ],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "object",
+              properties: {
+                transcription: { type: "string" },
+                intent: {
+                  type: "string",
+                  enum: [
+                    "CREATE_TASK",
+                    "VIEW_TASKS",
+                    "COMPLETE_TASK",
+                    "POSTPONE_TASK",
+                    "DELETE_TASK",
+                    "GET_RECOMMENDATION",
+                    "GET_ID",
+                    "HELP",
+                    "UNKNOWN",
+                  ],
+                },
+                title: { type: "string" },
+                deadline: { type: "string" },
+                importance: { type: "integer" },
+                estimatedMinutes: { type: "integer" },
+                taskQuery: { type: "string" },
+                replyMessage: { type: "string" },
+              },
+              required: ["intent", "transcription"],
+            },
+          },
+        }),
+        audioCandidates
       );
 
-      if (!response.ok) {
-        console.error(`Gemini audio API error: ${response.status} ${await response.text()}`);
+      if (!responseResult.ok || !responseResult.data) {
+        if (responseResult.status === 429) {
+          return {
+            intent: "UNKNOWN",
+            replyMessage:
+              "ขออภัยครับ โควตาการประมวลผลเสียงของระบบเต็มชั่วคราว กรุณาลองใหม่อีกครั้ง หรือพิมพ์เป็นข้อความแทนได้นะครับ 🌱",
+          };
+        }
         return {
           intent: "UNKNOWN",
           replyMessage: "ขออภัยครับ เกิดข้อผิดพลาดในการประมวลผลเสียง กรุณาลองใหม่อีกครั้งนะครับ",
         };
       }
 
-      const data = (await response.json()) as any;
-      const contentText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      const contentText = responseResult.data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!contentText) {
         return {
           intent: "UNKNOWN",
@@ -794,28 +861,20 @@ Rules:
 Output strictly JSON: { "nudgeMessage": "..." }`;
 
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: {
-              responseMimeType: "application/json",
-              responseSchema: {
-                type: "object",
-                properties: { nudgeMessage: { type: "string" } },
-                required: ["nudgeMessage"],
-              },
-            },
-          }),
-        }
-      );
+      const responseResult = await this.callGeminiWithFallback(() => ({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "object",
+            properties: { nudgeMessage: { type: "string" } },
+            required: ["nudgeMessage"],
+          },
+        },
+      }));
 
-      if (response.ok) {
-        const data = (await response.json()) as any;
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (responseResult.ok && responseResult.data) {
+        const text = responseResult.data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text) {
           const parsed = JSON.parse(text);
           if (parsed.nudgeMessage) return parsed.nudgeMessage;
