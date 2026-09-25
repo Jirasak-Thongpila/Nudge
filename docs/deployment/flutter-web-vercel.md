@@ -43,7 +43,7 @@
 
 | Key | Value ตัวอย่าง | คำอธิบาย |
 | :--- | :--- | :--- |
-| `API_URL` | `https://nudge-backend.vercel.app` | URL ของ Backend API ที่ deploy แล้ว |
+| `API_URL` | `https://backend-ebon-eight-14.vercel.app` | URL ของ Backend API ที่ deploy แล้ว |
 | `LINE_LIFF_ID` | `2011693149-NldwbAUx` | LINE LIFF ID ของคุณ |
 
 > **หมายเหตุ:** หากไม่กำหนดค่า `API_URL` หรือ `LINE_LIFF_ID` ใน Vercel ระบบจะใช้ค่าเริ่มต้นที่กำหนดไว้ในโค้ด Dart
