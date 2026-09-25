@@ -120,14 +120,18 @@ flutter build web --release \
 
 ### 2. Deploy Web ขึ้น Hosting (เลือกอย่างใดอย่างหนึ่ง)
 
-#### ทางเลือก A: Vercel (ฟรี & รวดเร็ว)
-1. ติดตั้ง Vercel CLI: `npm i -g vercel`
-2. ไปที่โฟลเดอร์ build:
-   ```bash
-   cd frontend/build/web
-   vercel --prod
-   ```
-3. นำ URL ที่ได้ (เช่น `https://nudge-app.vercel.app`) ไปตั้งใน LINE Developers Console
+#### ทางเลือก A: Vercel (แนะนำ - CI/CD อัตโนมัติด้วย Git Integration)
+เราได้เตรียมสคริปต์ [frontend/build.sh](file:///d:/JWS/project/mobile/Nudge/frontend/build.sh) และคอนฟิก [frontend/vercel.json](file:///d:/JWS/project/mobile/Nudge/frontend/vercel.json) ไว้แล้ว สามารถเชื่อมต่อกับ GitHub เพื่อ Auto-Deploy ได้ทันที:
+1. ไปที่ Vercel Dashboard -> **Import Git Repository**
+2. ตั้ง **Root Directory** เป็น `frontend`
+3. กำหนด Environment Variables: `API_URL` และ `LINE_LIFF_ID`
+4. กด **Deploy** (ดูคู่มือฉบับเต็มได้ที่ [docs/deployment/flutter-web-vercel.md](file:///d:/JWS/project/mobile/Nudge/docs/deployment/flutter-web-vercel.md))
+
+หรือหากต้องการ deploy จากเครื่อง Local แบบเร่งด่วน:
+```bash
+cd frontend/build/web
+vercel --prod
+```
 
 #### ทางเลือก B: Cloudflare Pages (ฟรี & CDN เร็วที่สุดในไทย)
 1. ไปที่ Cloudflare Dashboard -> **Workers & Pages** -> **Create Application** -> **Pages**
