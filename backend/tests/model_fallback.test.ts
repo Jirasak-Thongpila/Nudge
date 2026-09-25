@@ -122,4 +122,17 @@ describe("GeminiService - Automatic Model Fallback on Quota (429) & Server Error
       globalThis.fetch = originalFetch;
     }
   });
+
+  it("should normalize female polite particles into male polite particles (ครับ/นะครับ)", () => {
+    const service = new GeminiService("");
+    expect(service.normalizePoliteParticles("สวัสดีค่ะ มีอะไรให้ช่วยไหมคะ")).toBe(
+      "สวัสดีครับ มีอะไรให้ช่วยไหมครับ"
+    );
+    expect(service.normalizePoliteParticles("สู้ๆ นะคะ มีอะไรปรึกษาได้นะคะ")).toBe(
+      "สู้ๆ นะครับ มีอะไรปรึกษาได้นะครับ"
+    );
+    expect(service.normalizePoliteParticles("สวัสดีค่ะ/ครับ")).toBe("สวัสดีครับ");
+    expect(service.normalizePoliteParticles("คะแนน 100")).toBe("คะแนน 100");
+  });
 });
+

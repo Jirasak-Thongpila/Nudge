@@ -355,6 +355,19 @@ export class GeminiService {
     return { ok: false, status: lastStatus, text: lastErrorText };
   }
 
+  /**
+   * Enforces Nudge's consistent male buddy persona by normalizing polite particles to "ครับ" / "นะครับ".
+   */
+  normalizePoliteParticles(text?: string): string | undefined {
+    if (!text) return text;
+    return text
+      .replace(/ค่ะ\/ครับ|ครับ\/ค่ะ|คะ\/ครับ|ครับ\/คะ/g, "ครับ")
+      .replace(/(นะค่ะ|นะคะ)/g, "นะครับ")
+      .replace(/ค่ะ/g, "ครับ")
+      .replace(/(ไหม|มั้ย|หรือเปล่า|เหรอ|หรอ|หรือ|ล่ะ|เล่า|จ๊ะ)คะ/g, "$1ครับ")
+      .replace(/(^|\s|[.,!?])คะ(?=\s|[.,!?]|$)/g, "$1ครับ");
+  }
+
   async parseTaskIntent(message: string, now: Date = new Date()): Promise<TaskIntentResult> {
     const raw = message.trim();
     if (!raw) {
@@ -414,12 +427,16 @@ export class GeminiService {
     }
 
     try {
-      const systemPrompt = `You are an intelligent task parsing assistant for Nudge, a behavioral productivity app.
+      const systemPrompt = `You are Nudge, an empathetic, supportive, and friendly Thai productivity buddy (เพื่อนคู่คิด).
 Analyze the user's Thai or English message and extract the user's intent and structured task details.
 The current date and time is: ${now.toISOString()} (Timezone: Asia/Bangkok, UTC+7).
 
+Persona & Tone:
+- Always speak as a warm, friendly, and supportive male buddy using polite ending particles "ครับ" / "นะครับ".
+- Strictly NEVER use "ค่ะ" or "นะคะ".
+
 Rules:
-1. If the user wants to add or create a task (e.g. "พรุ่งนี้ส่งงาน...", "มีสอบวันศุกร์...", "ช่วยเตือนทำการบ้าน..."), set intent to "CREATE_TASK".
+1. If the user wants to add or create a task (e.g. "พรุ่งนี้ส่งงาน...", "มีสอบวันศุกร์...", "ช่วยเตือนทำการบ้าน..."), set intent to "CREATE_TASK":
    - Extract "title": clean task title built only from words the user actually wrote. Never add an action verb or noun that is not in the message — for example, if the user says "มีมินิโปรเจกต์" do not return "ส่งมินิโปรเจกต์".
    - Extract "deadline": compute full ISO-8601 string based on the current time and user's requested time (default to 23:59:59 if only date is specified).
    - Extract "importance": integer from 1 to 5. If the user typed an explicit rating such as "3 ดาว", "3/5", or "ระดับ 3", use that exact number — it overrides descriptive words like "สำคัญมาก"/"ด่วน". Otherwise default to 3 (5 if urgent/very important).
@@ -429,8 +446,8 @@ Rules:
 3.1. If the user says they finished something ("ทำการบ้านเสร็จแล้ว", "อ่านหนังสือจบแล้ว"), set intent to "COMPLETE_TASK" and put the name they used in "taskQuery".
 3.2. If the user wants to remove a task ("ลบงานอ่านหนังสือ", "ยกเลิกงานสอบ"), set intent to "DELETE_TASK" and put the name they used in "taskQuery".
 3.3. If the user says they are putting something off ("เลื่อนไปก่อน", "ขอเลื่อนอ่านหนังสือ"), set intent to "POSTPONE_TASK" and put the name they used in "taskQuery".
-4. If it's a general greeting or unrelated query, set intent to "UNKNOWN" and provide a helpful, friendly replyMessage in Thai.
-5. Never use "CREATE_TASK" for small talk, thanks, praise, complaints or venting ("งานเยอะจัง", "เหนื่อยมาก"), questions about a schedule, or messages saying something is already done. Use "UNKNOWN" with a short, empathetic replyMessage that invites the user to state a concrete task with a day or time.`;
+4. If it's a general greeting, casual talk, small talk, or unrelated query, set intent to "UNKNOWN" and provide a helpful, friendly, and empathetic replyMessage in Thai using "ครับ" / "นะครับ" (never "ค่ะ" / "นะคะ").
+5. Never use "CREATE_TASK" for small talk, thanks, praise, complaints or venting ("งานเยอะจัง", "เหนื่อยมาก"), questions about a schedule, or messages saying something is already done. Use "UNKNOWN" with a short, empathetic replyMessage using "ครับ" / "นะครับ" that invites the user to state a concrete task with a day or time.`;
 
       const responseResult = await this.callGeminiWithFallback(() => ({
         contents: [
@@ -480,6 +497,9 @@ Rules:
       }
 
       const parsed = JSON.parse(contentText) as TaskIntentResult;
+      if (parsed.replyMessage) {
+        parsed.replyMessage = this.normalizePoliteParticles(parsed.replyMessage);
+      }
       if (parsed.intent === "CREATE_TASK" && !confirmed && this.isClearlyNotTaskRequest(trimmed)) {
         return { intent: "UNKNOWN", replyMessage: CLARIFY_TASK_MESSAGE };
       }
@@ -711,11 +731,15 @@ Rules:
     }
 
     const base64Audio = audioBuffer.toString("base64");
-    const systemPrompt = `You are an intelligent multimodal voice assistant for Nudge, a behavioral productivity app.
+    const systemPrompt = `You are Nudge, an intelligent multimodal voice assistant and supportive productivity buddy (เพื่อนคู่คิด).
 Listen carefully to the user's spoken audio (primarily in Thai or English).
 First, accurately transcribe what the user said in "transcription".
 Second, analyze their intent and extract structured task details if they are asking to add or track a task.
 The current date and time is: ${now.toISOString()} (Timezone: Asia/Bangkok, UTC+7).
+
+Persona & Tone:
+- Always speak as a warm, friendly, and supportive male buddy using polite ending particles "ครับ" / "นะครับ".
+- Strictly NEVER use "ค่ะ" or "นะคะ".
 
 Rules:
 1. "transcription": verbatim transcription of user speech in Thai.
@@ -728,7 +752,7 @@ Rules:
 4. If the user asks for a recommendation or what to start now, set intent to "GET_RECOMMENDATION".
 5. If the user says they completed a task, set intent to "COMPLETE_TASK".
 6. If the user asks to postpone, set intent to "POSTPONE_TASK".
-7. If casual talk or unclear audio, set intent to "UNKNOWN" with an empathetic Thai "replyMessage".`;
+7. If casual talk, unclear audio, or venting, set intent to "UNKNOWN" with an empathetic Thai "replyMessage" using "ครับ" / "นะครับ" (never "ค่ะ" / "นะคะ").`;
 
     const audioCandidates = [
       this.model,
@@ -812,6 +836,9 @@ Rules:
       }
 
       const parsed = JSON.parse(contentText) as AudioTaskIntentResult;
+      if (parsed.replyMessage) {
+        parsed.replyMessage = this.normalizePoliteParticles(parsed.replyMessage);
+      }
       // Apply sensible defaults if CREATE_TASK
       if (parsed.intent === "CREATE_TASK") {
         if (!parsed.importance) parsed.importance = 3;
@@ -877,7 +904,9 @@ Output strictly JSON: { "nudgeMessage": "..." }`;
         const text = responseResult.data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text) {
           const parsed = JSON.parse(text);
-          if (parsed.nudgeMessage) return parsed.nudgeMessage;
+          if (parsed.nudgeMessage) {
+            return this.normalizePoliteParticles(parsed.nudgeMessage) || parsed.nudgeMessage;
+          }
         }
       }
     } catch (err) {
