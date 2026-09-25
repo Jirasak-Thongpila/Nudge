@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/task.dart';
 import '../models/focus_session.dart';
 import '../services/api_client.dart';
+import '../services/notification_service.dart';
 import 'focus_timer_screen.dart';
 
 class TaskDetailScreen extends StatefulWidget {
@@ -155,6 +156,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     setState(() => _isProcessing = true);
     try {
       await widget.apiClient.sendLineActionNudge(_task.id);
+      PlatformNotification.showNotification(
+        '🌱 Nudge: ${_task.title}',
+        body: 'งานนี้สำคัญ ลองเริ่มก้าวแรก 10 นาทีไหมครับ',
+      );
       setState(() => _isProcessing = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -734,6 +739,43 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                           ),
                           onPressed: _sendLineActionNudge,
+                        ),
+                      ),
+                      Container(
+                        margin: const EdgeInsets.only(top: 10),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E293B),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF334155)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.notifications_active_outlined, color: Color(0xFF818CF8), size: 16),
+                                SizedBox(width: 6),
+                                Text(
+                                  'ระบบแจ้งเตือนอัจฉริยะ (Smart Cadence)',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              _task.daysRemaining > 2 && _task.importance >= 4
+                                  ? '• งานสำคัญระยะยาว: ระบบจะส่ง Action Nudge เตือนวันละ 1 ครั้ง ช่วง 08:00 - 21:00 น.'
+                                  : _task.daysRemaining <= 1
+                                      ? '• ใกล้ถึงกำหนดส่ง: ระบบจะเตือนถี่ขึ้นผ่าน LINE OA และระบบอุปกรณ์'
+                                      : '• ระบบจะเตือนเมื่อใกล้ถึงกำหนด หรือเมื่อตรวจพบการเลื่อนงานซ้ำ',
+                              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11, height: 1.4),
+                            ),
+                          ],
                         ),
                       ),
                     ],

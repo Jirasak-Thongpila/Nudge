@@ -55,6 +55,11 @@ class FakeApiClient extends ApiClient {
       recommended: null,
     );
   }
+
+  @override
+  Future<Map<String, dynamic>?> getNudgePreview() async {
+    return null;
+  }
 }
 
 void main() {

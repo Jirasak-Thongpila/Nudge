@@ -4,6 +4,7 @@ import '../models/task.dart';
 import '../models/user.dart';
 import '../services/api_client.dart';
 import '../services/liff_service.dart';
+import '../services/notification_service.dart';
 import 'add_task_screen.dart';
 import 'task_list_screen.dart';
 import 'focus_timer_screen.dart';
@@ -26,6 +27,7 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   DashboardData? _dashboardData;
+  Map<String, dynamic>? _nudgePreview;
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -43,8 +45,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     try {
       final data = await widget.apiClient.getDashboard();
+      Map<String, dynamic>? nudge;
+      try {
+        nudge = await widget.apiClient.getNudgePreview();
+      } catch (_) {}
+
       setState(() {
         _dashboardData = data;
+        _nudgePreview = nudge;
         _isLoading = false;
       });
     } catch (e) {
@@ -495,12 +503,274 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  void _showNotificationCenter() {
+    final decision = _nudgePreview?['decision'] as Map<String, dynamic>?;
+    final hasPerm = PlatformNotification.hasPermission();
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.indigo.shade50,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.notifications_active, color: Color(0xFF6366F1)),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'ศูนย์แจ้งเตือนอัจฉริยะ (Smart Nudge)',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                'แจ้งเตือนคู่ขนานผ่าน LINE OA และระบบอุปกรณ์',
+                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Active Action Nudge if any
+                    if (decision != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEEF2FF),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFC7D2FE)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text(
+                                  '🌱 คำแนะนำเริ่มก้าวแรกวันนี้',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF4338CA),
+                                  ),
+                                ),
+                                const Spacer(),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF4F46E5),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    decision['reason'] ?? 'ACTION',
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              decision['title'] ?? 'งานสำคัญ',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E1B4B),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              decision['reasonText'] ?? '',
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF475569)),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '“${decision['nudgeMessage'] ?? 'ลองเริ่ม 10 นาทีไหม?'}”',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF4338CA),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton.icon(
+                                icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                                label: const Text('เริ่ม 10 นาทีเลย'),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xFF4F46E5),
+                                ),
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  final taskId = decision['taskId'] as int?;
+                                  if (taskId != null) {
+                                    final allTasks = [
+                                      if (_dashboardData?.recommended != null)
+                                        _dashboardData!.recommended!.task,
+                                      ...?_dashboardData?.next,
+                                      ...?_dashboardData?.later,
+                                    ];
+                                    final found = allTasks.cast<Task?>().firstWhere(
+                                          (t) => t?.id == taskId,
+                                          orElse: () => _dashboardData?.recommended?.task,
+                                        );
+                                    if (found != null) {
+                                      _onStartFocusSession(found);
+                                    }
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Smart Cadence Explanation Card
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '🗓️ รูปแบบการแจ้งเตือน (Smart Cadence)',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                          SizedBox(height: 6),
+                          Text(
+                            '• งานสำคัญระยะยาว: ระบบจะเตือนวันละ 1 ครั้ง ในช่วงเวลา 08:00 - 21:00 น.\n'
+                            '• งานใกล้กำหนดส่ง: จะเตือนล่วงหน้า 1-2 วัน และเตือนก่อนถึงกำหนด\n'
+                            '• งานที่ถูกเลื่อน: จะแนะนำก้าวเริ่มต้น 10 นาที เพื่อลดแรงต้าน',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF64748B),
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Browser Notification Permission / Test
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: Icon(
+                              hasPerm ? Icons.notifications_active : Icons.notifications_none,
+                              size: 18,
+                            ),
+                            label: Text(
+                              hasPerm ? 'เปิดแจ้งเตือนแล้ว' : 'ขอสิทธิ์แจ้งเตือน',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            onPressed: () async {
+                              final granted = await PlatformNotification.requestPermission();
+                              setModalState(() {});
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      granted
+                                          ? '✅ อนุญาตการแจ้งเตือนสำเร็จแล้ว'
+                                          : '⚠️ ยังไม่ได้รับสิทธิ์การแจ้งเตือน',
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: FilledButton.tonalIcon(
+                            icon: const Icon(Icons.send_rounded, size: 18),
+                            label: const Text('ทดสอบแจ้งเตือน', style: TextStyle(fontSize: 12)),
+                            onPressed: () {
+                              PlatformNotification.showNotification(
+                                '🌱 Nudge: เริ่มก้าวแรก 10 นาทีกันนะ',
+                                body: 'ระบบแจ้งเตือนของ Nudge พร้อมทำงานแล้วครับ',
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('🔔 ส่งการแจ้งเตือนทดสอบแล้ว'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Nudge'),
         actions: [
+          IconButton(
+            icon: Stack(
+              children: [
+                const Icon(Icons.notifications_outlined),
+                if (_nudgePreview?['decision'] != null)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            tooltip: 'ศูนย์แจ้งเตือน Nudge',
+            onPressed: _showNotificationCenter,
+          ),
           IconButton(
             icon: const Icon(Icons.format_list_bulleted),
             tooltip: 'ดู Task ทั้งหมด',

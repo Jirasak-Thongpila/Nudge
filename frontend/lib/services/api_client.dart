@@ -371,6 +371,80 @@ class ApiClient {
     }
   }
 
+  /// Quick adds a task from natural language text using Gemini/Fast NLP parser
+  Future<Map<String, dynamic>> quickAddTask({
+    required String text,
+    bool confirmed = false,
+  }) async {
+    final headers = await _getHeaders();
+    final response = await _httpClient.post(
+      Uri.parse('$baseUrl/tasks/quick-add'),
+      headers: headers,
+      body: jsonEncode({
+        'text': text,
+        'confirmed': confirmed,
+      }),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      try {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        throw Exception(body['error'] ?? response.body);
+      } catch (e) {
+        if (e is Exception && !e.toString().contains('FormatException')) rethrow;
+        throw Exception('Failed to quick add task: ${response.statusCode} - ${response.body}');
+      }
+    }
+  }
+
+  /// Quick adds a task from spoken audio base64 using multimodal Gemini parser
+  Future<Map<String, dynamic>> quickAddAudioTask({
+    required String audioBase64,
+    String mimeType = 'audio/webm',
+    bool confirmed = false,
+  }) async {
+    final headers = await _getHeaders();
+    final response = await _httpClient.post(
+      Uri.parse('$baseUrl/tasks/quick-add-audio'),
+      headers: headers,
+      body: jsonEncode({
+        'audioBase64': audioBase64,
+        'mimeType': mimeType,
+        'confirmed': confirmed,
+      }),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      try {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        throw Exception(body['error'] ?? response.body);
+      } catch (e) {
+        if (e is Exception && !e.toString().contains('FormatException')) rethrow;
+        throw Exception('Failed to quick add audio task: ${response.statusCode} - ${response.body}');
+      }
+    }
+  }
+
+  /// Fetches next previewed Action Nudge from backend
+  Future<Map<String, dynamic>?> getNudgePreview() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _httpClient.get(
+        Uri.parse('$baseUrl/nudges/preview'),
+        headers: headers,
+      );
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        return json['data'] as Map<String, dynamic>?;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   /// Sends an external Action Nudge via LINE OA (Ticket 09)
   Future<Map<String, dynamic>> sendLineActionNudge(int taskId) async {
     final headers = await _getHeaders();
@@ -398,3 +472,4 @@ class ApiClient {
     }
   }
 }
+
