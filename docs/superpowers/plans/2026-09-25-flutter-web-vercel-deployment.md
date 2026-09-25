@@ -26,7 +26,7 @@
 - Consumes: Environment variables `$API_URL` and `$LINE_LIFF_ID` (if set in Vercel)
 - Produces: Compiled Flutter Web assets in `frontend/build/web/`
 
-- [ ] **Step 1: Write `frontend/build.sh`**
+- [x] **Step 1: Write `frontend/build.sh`**
 
 ```bash
 #!/bin/bash
@@ -79,14 +79,14 @@ fi
 echo "=== Flutter Web Build Completed Successfully! ==="
 ```
 
-- [ ] **Step 2: Verify script syntax and set execution permission**
+- [x] **Step 2: Verify script syntax and set execution permission**
 
 Run in terminal:
 ```bash
 git update-index --chmod=+x frontend/build.sh
 ```
 
-- [ ] **Step 3: Commit Task 1**
+- [x] **Step 3: Commit Task 1**
 
 ```bash
 git add frontend/build.sh
@@ -104,7 +104,7 @@ git commit -m "feat(frontend): add build script for vercel deployment"
 - Consumes: `frontend/build.sh`
 - Produces: Vercel project configuration for build commands, output directory, SPA rewrites, and security headers.
 
-- [ ] **Step 1: Update `frontend/vercel.json`**
+- [x] **Step 1: Update `frontend/vercel.json`**
 
 Replace content of `frontend/vercel.json`:
 ```json
@@ -131,7 +131,7 @@ Replace content of `frontend/vercel.json`:
 }
 ```
 
-- [ ] **Step 2: Validate JSON syntax**
+- [x] **Step 2: Validate JSON syntax**
 
 Run:
 ```powershell
@@ -139,7 +139,7 @@ Get-Content frontend/vercel.json | ConvertFrom-Json
 ```
 Expected: Parses successfully with no error.
 
-- [ ] **Step 3: Commit Task 2**
+- [x] **Step 3: Commit Task 2**
 
 ```bash
 git add frontend/vercel.json
@@ -157,7 +157,7 @@ git commit -m "feat(frontend): configure vercel.json with build command and head
 - Consumes: Flutter SDK, `frontend/pubspec.yaml`, `frontend/lib/main.dart`
 - Produces: `frontend/build/web/index.html`
 
-- [ ] **Step 1: Run Flutter build web release locally**
+- [x] **Step 1: Run Flutter build web release locally**
 
 Run:
 ```powershell
@@ -166,7 +166,7 @@ flutter build web --release --dart-define=API_URL=http://localhost:3000 --dart-d
 ```
 Expected: `✓ Built build/web`
 
-- [ ] **Step 2: Verify existence of output artifacts**
+- [x] **Step 2: Verify existence of output artifacts**
 
 Check that `frontend/build/web/index.html` exists and `frontend/.gitignore` ignores `build/`.
 Run:
@@ -175,7 +175,7 @@ Test-Path frontend/build/web/index.html
 ```
 Expected: `True`
 
-- [ ] **Step 3: Verify git status is clean of built assets**
+- [x] **Step 3: Verify git status is clean of built assets**
 
 Run:
 ```bash
@@ -194,7 +194,7 @@ Expected: `build/` is untracked/ignored by `.gitignore`.
 - Consumes: Architecture decisions and Vercel project settings
 - Produces: Clear, step-by-step instructions for dashboard setup on Vercel
 
-- [ ] **Step 1: Write `docs/deployment/flutter-web-vercel.md`**
+- [x] **Step 1: Write `docs/deployment/flutter-web-vercel.md`**
 
 Include:
 - Project creation in Vercel (Root Directory: `frontend`)
@@ -203,7 +203,7 @@ Include:
 - LINE Developer Console LIFF Endpoint URL update (pointing to Vercel domain)
 - Troubleshooting tips (build timeout, caching, CORS/COOP)
 
-- [ ] **Step 2: Commit Task 4**
+- [x] **Step 2: Commit Task 4**
 
 ```bash
 git add docs/deployment/flutter-web-vercel.md
