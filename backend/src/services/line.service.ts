@@ -303,12 +303,36 @@ export class LineService {
 
   private formatDaysRemainingLabel(
     deadline: Date,
-    daysRemaining: number
+    daysRemaining: number,
+    timeZone: string = "Asia/Bangkok"
   ): { text: string; color: string } {
     const d = new Date(deadline);
-    const hours = d.getHours().toString().padStart(2, "0");
-    const minutes = d.getMinutes().toString().padStart(2, "0");
-    const timeStr = `${hours}:${minutes}`;
+    let timeStr = "";
+    let day = 0;
+    let month = 0;
+
+    try {
+      timeStr = new Intl.DateTimeFormat("en-GB", {
+        timeZone,
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }).format(d);
+
+      const dateParts = new Intl.DateTimeFormat("en-GB", {
+        timeZone,
+        day: "numeric",
+        month: "numeric",
+      }).formatToParts(d);
+      day = Number(dateParts.find((p) => p.type === "day")?.value || d.getDate());
+      month = Number(dateParts.find((p) => p.type === "month")?.value || d.getMonth() + 1);
+    } catch {
+      const hours = d.getHours().toString().padStart(2, "0");
+      const minutes = d.getMinutes().toString().padStart(2, "0");
+      timeStr = `${hours}:${minutes}`;
+      day = d.getDate();
+      month = d.getMonth() + 1;
+    }
 
     if (daysRemaining < 0) {
       return {
@@ -334,8 +358,6 @@ export class LineService {
         color: "#4F46E5",
       };
     }
-    const day = d.getDate();
-    const month = d.getMonth() + 1;
     return {
       text: `📅 อีก ${daysRemaining} วัน (${day}/${month} ${timeStr})`,
       color: "#475569",

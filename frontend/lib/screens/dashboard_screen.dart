@@ -397,11 +397,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     runSpacing: 6,
                     children: [
                       _buildChip(
-                        task.daysRemaining < 0
-                            ? 'เกินกำหนด ${-task.daysRemaining} วัน'
-                            : task.daysRemaining == 0
-                                ? 'ครบกำหนดวันนี้'
-                                : 'เหลืออีก ${task.daysRemaining} วัน',
+                        task.daysRemainingText,
                         task.daysRemaining <= 1 ? AppColors.roseLight : AppColors.primaryLight,
                         icon: Icons.calendar_today_rounded,
                       ),
@@ -659,11 +655,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             Row(
                               children: [
                                 Text(
-                                  t.daysRemaining < 0
-                                      ? 'เกินกำหนด ${-t.daysRemaining} วัน'
-                                      : t.daysRemaining == 0
-                                          ? 'ครบกำหนดวันนี้'
-                                          : 'เหลือ ${t.daysRemaining} วัน',
+                                  t.daysRemainingText,
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
