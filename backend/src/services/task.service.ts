@@ -50,7 +50,7 @@ export class TaskService {
   constructor(private db: Database = defaultDb) {}
 
   public attachDerivedFields(task: Task, now: Date = new Date()): TaskWithDerived {
-    const daysRemaining = calculateDaysRemaining(task.deadline, now);
+    const daysRemaining = calculateDaysRemaining(task.deadline, now, "Asia/Bangkok");
     const avoidanceScore = calculateAvoidanceScore(task.postponeCount);
     const isPotentiallyAvoided = detectPotentiallyAvoided({
       postponeCount: task.postponeCount,
@@ -273,7 +273,7 @@ export class TaskService {
       .from(tasks)
       .where(and(eq(tasks.userId, userId), isNull(tasks.deletedAt)));
 
-    return generateRecommendation(rows);
+    return generateRecommendation(rows, new Date(), "Asia/Bangkok");
   }
 
   async getDashboard(userId: number): Promise<DashboardData> {
@@ -283,13 +283,13 @@ export class TaskService {
       .where(and(eq(tasks.userId, userId), isNull(tasks.deletedAt)));
 
     const now = new Date();
-    const recommended = generateRecommendation(rows, now);
+    const recommended = generateRecommendation(rows, now, "Asia/Bangkok");
     const recommendedTaskId = recommended?.task.id;
 
     // Filter active tasks that aren't the top recommended task
     const remainingActive = rows
       .filter((t) => t.status !== "COMPLETED" && t.id !== recommendedTaskId)
-      .map((t) => calculateTaskPriority(t, now));
+      .map((t) => calculateTaskPriority(t, now, "Asia/Bangkok"));
 
     // Sort active tasks by priorityScore DESC, then deadline ASC
     remainingActive.sort((a, b) => {
@@ -306,7 +306,7 @@ export class TaskService {
     const completedCount = rows.filter((t) => t.status === "COMPLETED").length;
     const potentiallyAvoidedCount = rows.filter((t) => {
       if (t.status === "COMPLETED") return false;
-      const days = calculateDaysRemaining(t.deadline, now);
+      const days = calculateDaysRemaining(t.deadline, now, "Asia/Bangkok");
       return detectPotentiallyAvoided({
         postponeCount: t.postponeCount,
         daysRemaining: days,

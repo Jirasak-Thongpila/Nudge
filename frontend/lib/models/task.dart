@@ -37,6 +37,7 @@ class Task {
 
   bool get isOverdue => daysRemaining < 0;
   bool get isDueToday => daysRemaining == 0;
+  bool get isDueTomorrow => daysRemaining == 1;
   bool get isCompleted => status == 'COMPLETED';
   bool get isInProgress => status == 'IN_PROGRESS';
   bool get isNotStarted => status == 'NOT_STARTED';
@@ -44,6 +45,7 @@ class Task {
   String get daysRemainingText {
     if (isOverdue) return 'เกินกำหนด ${-daysRemaining} วัน';
     if (isDueToday) return 'ครบกำหนดวันนี้';
+    if (isDueTomorrow) return 'พรุ่งนี้';
     return 'เหลืออีก $daysRemaining วัน';
   }
 

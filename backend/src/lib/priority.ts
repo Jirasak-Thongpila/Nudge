@@ -29,8 +29,12 @@ export interface TaskWithPriority extends Task {
  * priority_score = urgency_score + importance_score + avoidance_score
  * (ADR-0002: Computed dynamically at runtime, never stored in DB)
  */
-export function calculateTaskPriority(task: Task, now: Date = new Date()): TaskWithPriority {
-  const daysRemaining = calculateDaysRemaining(task.deadline, now);
+export function calculateTaskPriority(
+  task: Task,
+  now: Date = new Date(),
+  timeZone?: string
+): TaskWithPriority {
+  const daysRemaining = calculateDaysRemaining(task.deadline, now, timeZone);
   const urgencyScore = calculateUrgencyScore(daysRemaining);
   const importanceScore = Math.max(1, Math.min(5, Math.round(Number(task.importance))));
   const avoidanceScore = calculateAvoidanceScore(task.postponeCount);
@@ -77,11 +81,12 @@ export interface RecommendationResult {
 
 export function generateRecommendation(
   tasks: Task[],
-  now: Date = new Date()
+  now: Date = new Date(),
+  timeZone?: string
 ): RecommendationResult | null {
   const activeTasks = tasks
     .filter((t) => t.status !== "COMPLETED" && !t.deletedAt)
-    .map((t) => calculateTaskPriority(t, now));
+    .map((t) => calculateTaskPriority(t, now, timeZone));
 
   if (activeTasks.length === 0) {
     return null;

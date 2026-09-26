@@ -222,8 +222,13 @@ class _TaskListScreenState extends State<TaskListScreen> {
       bgColor = AppColors.amber.withValues(alpha: 0.15);
       textColor = AppColors.amberLight;
       icon = Icons.warning_amber_rounded;
+    } else if (task.isDueTomorrow) {
+      text = 'พรุ่งนี้';
+      bgColor = AppColors.amber.withValues(alpha: 0.15);
+      textColor = AppColors.amberLight;
+      icon = Icons.schedule_rounded;
     } else {
-      text = 'เหลือ ${task.daysRemaining} วัน';
+      text = 'เหลืออีก ${task.daysRemaining} วัน';
       bgColor = task.daysRemaining <= 2
           ? AppColors.amber.withValues(alpha: 0.15)
           : AppColors.primary.withValues(alpha: 0.15);

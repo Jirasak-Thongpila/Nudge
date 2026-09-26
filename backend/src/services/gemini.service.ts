@@ -438,7 +438,7 @@ Persona & Tone:
 Rules:
 1. If the user wants to add or create a task (e.g. "พรุ่งนี้ส่งงาน...", "มีสอบวันศุกร์...", "ช่วยเตือนทำการบ้าน..."), set intent to "CREATE_TASK":
    - Extract "title": clean task title built only from words the user actually wrote. Never add an action verb or noun that is not in the message — for example, if the user says "มีมินิโปรเจกต์" do not return "ส่งมินิโปรเจกต์".
-   - Extract "deadline": compute full ISO-8601 string based on the current time and user's requested time (default to 23:59:59 if only date is specified).
+   - Extract "deadline": compute full ISO-8601 string based on the current time and user's requested time in Asia/Bangkok (+07:00). If the user specifies "พรุ่งนี้" (tomorrow), the deadline MUST be the next calendar day in Bangkok (+07:00). Default time to 23:59:59 if only date is specified (e.g. if today is 2026-09-26, tomorrow is "2026-09-27T23:59:59+07:00"). Never set a tomorrow task to today.
    - Extract "importance": integer from 1 to 5. If the user typed an explicit rating such as "3 ดาว", "3/5", or "ระดับ 3", use that exact number — it overrides descriptive words like "สำคัญมาก"/"ด่วน". Otherwise default to 3 (5 if urgent/very important).
    - Extract "estimatedMinutes": estimated duration in minutes (default to 30 if unspecified).
 2. If the user asks to see their tasks or check what to do, set intent to "VIEW_TASKS".

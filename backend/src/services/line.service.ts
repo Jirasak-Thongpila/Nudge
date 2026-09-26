@@ -75,7 +75,9 @@ export class LineService {
         ? `เลยกำหนด ${Math.abs(task.daysRemaining)} วัน`
         : task.daysRemaining === 0
         ? "ครบกำหนดวันนี้"
-        : `เหลือ ${task.daysRemaining} วัน`;
+        : task.daysRemaining === 1
+        ? "พรุ่งนี้"
+        : `เหลืออีก ${task.daysRemaining} วัน`;
 
     const contents = {
       type: "bubble",
@@ -205,7 +207,9 @@ export class LineService {
         ? `เลยกำหนด ${Math.abs(task.daysRemaining)} วัน`
         : task.daysRemaining === 0
         ? "ครบกำหนดวันนี้"
-        : `เหลือ ${task.daysRemaining} วัน`;
+        : task.daysRemaining === 1
+        ? "พรุ่งนี้"
+        : `เหลืออีก ${task.daysRemaining} วัน`;
 
     const contents = {
       type: "bubble",
@@ -297,17 +301,73 @@ export class LineService {
     };
   }
 
+  private formatDaysRemainingLabel(
+    deadline: Date,
+    daysRemaining: number
+  ): { text: string; color: string } {
+    const d = new Date(deadline);
+    const hours = d.getHours().toString().padStart(2, "0");
+    const minutes = d.getMinutes().toString().padStart(2, "0");
+    const timeStr = `${hours}:${minutes}`;
+
+    if (daysRemaining < 0) {
+      return {
+        text: `🚨 เลยกำหนด ${Math.abs(daysRemaining)} วัน (${timeStr})`,
+        color: "#DC2626",
+      };
+    }
+    if (daysRemaining === 0) {
+      return {
+        text: `⚡ วันนี้ (${timeStr})`,
+        color: "#EA580C",
+      };
+    }
+    if (daysRemaining === 1) {
+      return {
+        text: `⏳ พรุ่งนี้ (${timeStr})`,
+        color: "#D97706",
+      };
+    }
+    if (daysRemaining === 2) {
+      return {
+        text: `📅 มะรืนนี้ (${timeStr})`,
+        color: "#4F46E5",
+      };
+    }
+    const day = d.getDate();
+    const month = d.getMonth() + 1;
+    return {
+      text: `📅 อีก ${daysRemaining} วัน (${day}/${month} ${timeStr})`,
+      color: "#475569",
+    };
+  }
+
   /**
-   * Constructs a Flex Message summarizing the user's active tasks.
+   * Constructs a Flex Message summarizing the user's active tasks in a clean, readable card format.
    */
   createTaskListFlexMessage(tasks: TaskWithDerived[]): LineFlexMessage {
     if (tasks.length === 0) {
       return {
         type: "flex",
-        altText: "รายการงานของคุณ",
+        altText: "✨ ไม่มีงานค้างในระบบ",
         contents: {
           type: "bubble",
           size: "kilo",
+          header: {
+            type: "box",
+            layout: "vertical",
+            backgroundColor: "#10B981",
+            paddingAll: "16px",
+            contents: [
+              {
+                type: "text",
+                text: "✨ จัดการงานทั้งหมดเรียบร้อยแล้ว",
+                color: "#FFFFFF",
+                weight: "bold",
+                size: "sm",
+              },
+            ],
+          },
           body: {
             type: "box",
             layout: "vertical",
@@ -315,18 +375,29 @@ export class LineService {
             contents: [
               {
                 type: "text",
-                text: "✨ ไม่มีงานค้างในระบบ",
-                weight: "bold",
-                size: "md",
-                color: "#0F172A",
-              },
-              {
-                type: "text",
-                text: "คุณจัดการงานทั้งหมดเรียบร้อยแล้ว หรือพิมพ์บอกงานใหม่เพื่อให้ Nudge ช่วยเตือนได้เลยครับ",
-                color: "#64748B",
+                text: "🎉 ยอดเยี่ยมมากครับ! ตอนนี้คุณไม่มีงานค้างเลย พักผ่อนให้สบายใจ หรือพิมพ์บอกงานใหม่เพื่อให้ Nudge ช่วยเตือนได้เลยครับ 🌱",
+                color: "#475569",
                 size: "xs",
-                margin: "sm",
                 wrap: true,
+              },
+            ],
+          },
+          footer: {
+            type: "box",
+            layout: "vertical",
+            paddingAll: "16px",
+            paddingTop: "0px",
+            contents: [
+              {
+                type: "button",
+                style: "primary",
+                color: "#4F46E5",
+                height: "sm",
+                action: {
+                  type: "message",
+                  label: "ดูงานทั้งหมด",
+                  text: "ดูงาน",
+                },
               },
             ],
           },
@@ -334,30 +405,153 @@ export class LineService {
       };
     }
 
-    const taskItems = tasks.slice(0, 5).map((t) => ({
-      type: "box",
-      layout: "horizontal",
-      spacing: "md",
-      contents: [
-        {
-          type: "text",
-          text: t.title,
-          size: "sm",
-          color: "#1E293B",
-          weight: "bold",
-          flex: 3,
-          wrap: true,
-        },
-        {
-          type: "text",
-          text: t.daysRemaining < 0 ? `เลย ${Math.abs(t.daysRemaining)} วัน` : `${t.daysRemaining} วัน`,
-          size: "xs",
-          color: t.daysRemaining <= 1 ? "#EF4444" : "#64748B",
-          align: "end",
-          flex: 1,
-        },
-      ],
-    }));
+    // Sort tasks: overdue (< 0) -> due today (0) -> due tomorrow (1) -> higher urgency / priority
+    const sortedTasks = [...tasks].sort((a, b) => {
+      if (a.daysRemaining !== b.daysRemaining) {
+        return a.daysRemaining - b.daysRemaining;
+      }
+      return (b.priorityScore ?? 0) - (a.priorityScore ?? 0);
+    });
+
+    const displayTasks = sortedTasks.slice(0, 5);
+
+    const taskCards = displayTasks.map((t) => {
+      const deadlineInfo = this.formatDaysRemainingLabel(t.deadline, t.daysRemaining);
+      const isUrgent = t.daysRemaining <= 1;
+
+      return {
+        type: "box",
+        layout: "vertical",
+        backgroundColor: t.isPotentiallyAvoided ? "#FFFBEB" : isUrgent ? "#FEF2F2" : "#F8FAFC",
+        cornerRadius: "10px",
+        paddingAll: "12px",
+        spacing: "xs",
+        borderWidth: "1px",
+        borderColor: t.isPotentiallyAvoided ? "#FDE68A" : isUrgent ? "#FECACA" : "#E2E8F0",
+        contents: [
+          // Row 1: Task ID pill + Title
+          {
+            type: "box",
+            layout: "horizontal",
+            spacing: "sm",
+            contents: [
+              {
+                type: "box",
+                layout: "vertical",
+                backgroundColor: "#EEF2FF",
+                cornerRadius: "4px",
+                paddingStart: "6px",
+                paddingEnd: "6px",
+                paddingTop: "2px",
+                paddingBottom: "2px",
+                contents: [
+                  {
+                    type: "text",
+                    text: `#${t.id}`,
+                    size: "xxs",
+                    color: "#4338CA",
+                    weight: "bold",
+                  },
+                ],
+              },
+              {
+                type: "text",
+                text: t.title,
+                size: "sm",
+                weight: "bold",
+                color: "#0F172A",
+                flex: 1,
+                wrap: true,
+              },
+            ],
+          },
+          // Row 2: Avoidance hint if applicable
+          ...(t.isPotentiallyAvoided
+            ? [
+                {
+                  type: "text",
+                  text: "⚠️ อาจกำลังหลีกเลี่ยง (ลองเริ่ม 10 นาทีไหม?)",
+                  size: "xxs",
+                  color: "#B45309",
+                  weight: "bold",
+                  wrap: true,
+                },
+              ]
+            : []),
+          // Row 3: Deadline + Importance stars
+          {
+            type: "box",
+            layout: "horizontal",
+            spacing: "xs",
+            margin: "xs",
+            contents: [
+              {
+                type: "text",
+                text: deadlineInfo.text,
+                size: "xs",
+                color: deadlineInfo.color,
+                weight: "bold",
+                flex: 3,
+              },
+              {
+                type: "text",
+                text: `⭐ ${t.importance}/5`,
+                size: "xs",
+                color: "#64748B",
+                align: "end",
+                flex: 1,
+              },
+            ],
+          },
+          // Row 4: Action Buttons (Start 10 min & Done)
+          {
+            type: "box",
+            layout: "horizontal",
+            spacing: "sm",
+            margin: "xs",
+            contents: [
+              {
+                type: "button",
+                style: "primary",
+                color: "#4F46E5",
+                height: "sm",
+                action: {
+                  type: "message",
+                  label: "⚡ เริ่ม 10 นาที",
+                  text: `เริ่ม 10 นาที #${t.id}`,
+                },
+                flex: 1,
+              },
+              {
+                type: "button",
+                style: "secondary",
+                color: "#E2E8F0",
+                height: "sm",
+                action: {
+                  type: "message",
+                  label: "✅ ปิดงาน",
+                  text: `ปิดงาน #${t.id}`,
+                },
+                flex: 1,
+              },
+            ],
+          },
+        ],
+      };
+    });
+
+    const bodyContents: any[] = [...taskCards];
+
+    if (tasks.length > 5) {
+      bodyContents.push({
+        type: "text",
+        text: `📌 แสดง 5 งานเร่งด่วนที่สุด (จากทั้งหมด ${tasks.length} รายการ)`,
+        size: "xxs",
+        color: "#64748B",
+        align: "center",
+        margin: "sm",
+      });
+    }
 
     const contents = {
       type: "bubble",
@@ -390,7 +584,7 @@ export class LineService {
         layout: "vertical",
         paddingAll: "16px",
         spacing: "md",
-        contents: taskItems,
+        contents: bodyContents,
       },
       footer: {
         type: "box",
@@ -413,10 +607,36 @@ export class LineService {
       },
     };
 
+    const topTask = sortedTasks[0];
+
     return {
       type: "flex",
       altText: `รายการงานของคุณ (${tasks.length} รายการ)`,
       contents,
+      quickReply: {
+        items: [
+          ...(topTask
+            ? [
+                {
+                  type: "action",
+                  action: {
+                    type: "message",
+                    label: `⚡ เริ่ม #${topTask.id}`,
+                    text: `เริ่ม 10 นาที #${topTask.id}`,
+                  },
+                },
+              ]
+            : []),
+          {
+            type: "action",
+            action: { type: "message", label: "💡 แนะนำงาน", text: "แนะนำ" },
+          },
+          {
+            type: "action",
+            action: { type: "message", label: "☕ พักก่อน", text: "พักก่อนดีกว่า" },
+          },
+        ],
+      },
     };
   }
 
